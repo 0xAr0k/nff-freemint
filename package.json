@@ -5,7 +5,7 @@
     "clean": "rm -rf dist",
     "dev": "bun --watch run ./src/index.ts",
     "build": "bun build ./src/index.ts --target bun --packages external --outdir dist",
-    "start": "bun run .dist/index.js",
+    "start": "bun run dist/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/"
   },
