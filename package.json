@@ -1,0 +1,25 @@
+{
+  "name": "nff-code-redeemer",
+  "private": true,
+  "scripts": {
+    "clean": "rm -rf dist",
+    "dev": "bun --watch run ./src/index.ts",
+    "build": "bun build ./src/index.ts --target bun --packages external --outdir dist",
+    "start": "bun run .dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.35.6",
+    "hono": "^4.10.7",
+    "pino": "^10.1.0",
+    "viem": "^2.40.3",
+    "zod": "^4.1.13"
+  }
+}
