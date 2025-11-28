@@ -10,16 +10,6 @@ import { isAddress, getAddress } from "viem";
 
 const app = new Hono();
 
-function getClientIP(c: any): string {
-  return (
-    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
-    c.req.header("x-real-ip") ||
-    c.req.header("cf-connecting-ip") ||
-    c.req.raw?.headers?.get("x-forwarded-for") ||
-    "unknown"
-  );
-}
-
 app
   .use(cors())
   .use(trimTrailingSlash())
@@ -30,7 +20,6 @@ app
     async (c) => {
       try {
         const redis = c.get("redis");
-        const ip = getClientIP(c);
 
         const {
           username,
@@ -46,53 +35,6 @@ app
           return badRequest(c, { error: "Invalid ETH address" });
         }
         const normalizedEth = getAddress(ethAddress).toLowerCase();
-
-        // Rate limit by IP (max 5 attempts per hour)
-        if (ip !== "unknown") {
-          const rateLimitKey = `rate_limit:${ip}`;
-          const attempts = (await redis.get(rateLimitKey)) as {
-            count: number;
-            firstAttempt: string;
-          } | null;
-
-          if (attempts) {
-            const hoursSince =
-              (Date.now() - new Date(attempts.firstAttempt).getTime()) /
-              (1000 * 60 * 60);
-
-            if (hoursSince < 1) {
-              // Within the hour
-              if (attempts.count >= 5) {
-                const minutesLeft = Math.ceil(60 - hoursSince * 60);
-                return c.json(
-                  {
-                    success: false,
-                    error: "rate_limited",
-                    message: `Too many attempts. Try again in ${minutesLeft} minutes`,
-                  },
-                  429,
-                );
-              }
-              // Increment count
-              await redis.set(rateLimitKey, {
-                count: attempts.count + 1,
-                firstAttempt: attempts.firstAttempt,
-              });
-            } else {
-              // Reset after 1 hour
-              await redis.set(rateLimitKey, {
-                count: 1,
-                firstAttempt: new Date().toISOString(),
-              });
-            }
-          } else {
-            // First attempt
-            await redis.set(rateLimitKey, {
-              count: 1,
-              firstAttempt: new Date().toISOString(),
-            });
-          }
-        }
 
         // Check if username already submitted
         const usernameUsed = await redis.get(
@@ -135,7 +77,6 @@ app
           curiosity,
           isFollowingX,
           isDiscordMember,
-          ip,
           timestamp,
         });
 
