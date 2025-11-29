@@ -57,36 +57,51 @@ app
       const rateLimits: any[] = [];
       const ethAddresses = new Set<string>();
 
+      // Only scan for submission keys
       let cursor = "0";
+      let iterations = 0;
 
       do {
-        const [nextCursor, keys] = (await redis.scan(cursor, {
+        const [nextCursor, keys] = await redis.scan(cursor, {
+          match: "submission:*",
           count: 100,
-        })) as [string, string[]];
-        cursor = nextCursor;
-
-        console.log("Cursor:", cursor, "Keys:", keys.length, keys.slice(0, 5));
+        });
+        cursor = String(nextCursor);
 
         for (const key of keys) {
           const value = await redis.get(key);
           if (!value) continue;
-
-          if (key.startsWith("submission:")) {
-            submissions.push(value as any);
-            if ((value as any).ethAddress)
-              ethAddresses.add((value as any).ethAddress);
-          } else if (key.startsWith("eth_used:")) {
-            ethAddresses.add(key.replace("eth_used:", ""));
-          } else if (key.startsWith("rate_limit:")) {
-            rateLimits.push({
-              ip: key.replace("rate_limit:", ""),
-              lastSubmission: (value as any).timestamp,
-            });
-          }
+          submissions.push(value as any);
+          if ((value as any).ethAddress)
+            ethAddresses.add((value as any).ethAddress);
         }
+
+        iterations++;
+        if (iterations >= 50) break; // Safety limit
       } while (cursor !== "0");
 
-      console.log("Submissions found:", submissions.length);
+      // Separate scan for rate limits (if you need them)
+      cursor = "0";
+      iterations = 0;
+      do {
+        const [nextCursor, keys] = await redis.scan(cursor, {
+          match: "rate_limit:*",
+          count: 100,
+        });
+        cursor = String(nextCursor);
+
+        for (const key of keys) {
+          const value = await redis.get(key);
+          if (!value) continue;
+          rateLimits.push({
+            ip: key.replace("rate_limit:", ""),
+            lastSubmission: (value as any).timestamp,
+          });
+        }
+
+        iterations++;
+        if (iterations >= 10) break;
+      } while (cursor !== "0");
 
       submissions.sort((a, b) =>
         (b.timestamp || "").localeCompare(a.timestamp || ""),
