@@ -97,6 +97,10 @@ app
         // Mark ETH as used
         await redis.set(`eth_used:${normalizedEth}`, { timestamp, username });
 
+        await redis.zadd("submission:zset", {
+          score: Date.parse(timestamp), // numeric timestamp
+          member: submissionKey,
+        });
         return ok(c, {
           success: true,
           message: "Application submitted successfully",

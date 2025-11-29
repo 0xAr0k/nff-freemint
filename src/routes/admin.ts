@@ -53,68 +53,32 @@ app
     try {
       const redis = c.get("redis");
 
+      // Get 100 most recent submissions
+      const keys = await redis.zrange("submission:zset", -100, -1, {
+        rev: true, // newest first
+      });
+
       const submissions: any[] = [];
-      const rateLimits: any[] = [];
       const ethAddresses = new Set<string>();
 
-      console.log("Starting submission scan...");
+      for (const key of keys) {
+        const data = await redis.get(key as string);
+        if (!data) continue;
 
-      let cursor = "0";
-      let iterations = 0;
+        const parsed = typeof data === "string" ? JSON.parse(data) : data;
 
-      do {
-        console.log("Scan iteration:", iterations, "Cursor:", cursor);
+        submissions.push(parsed);
 
-        const result = await redis.scan(cursor, {
-          match: "submission:*",
-          count: 100,
-        });
-
-        console.log("Raw result:", typeof result, Array.isArray(result));
-
-        const nextCursor = String(result[0]);
-        const keys = result[1] as string[];
-
-        console.log("Next cursor:", nextCursor, "Keys found:", keys?.length);
-
-        if (keys && keys.length > 0) {
-          console.log("Sample keys:", keys.slice(0, 3));
-
-          for (const key of keys) {
-            const value = await redis.get(key);
-            if (!value) continue;
-            submissions.push(value as any);
-            if ((value as any).ethAddress)
-              ethAddresses.add((value as any).ethAddress);
-          }
+        if (parsed.ethAddress) {
+          ethAddresses.add(parsed.ethAddress);
         }
-
-        cursor = nextCursor;
-        iterations++;
-
-        console.log("Submissions so far:", submissions.length);
-
-        if (iterations >= 20) {
-          console.log("Hit max iterations, breaking");
-          break;
-        }
-      } while (cursor !== "0");
-
-      console.log("Done scanning. Total submissions:", submissions.length);
-
-      submissions.sort((a, b) =>
-        (b.timestamp || "").localeCompare(a.timestamp || ""),
-      );
-
-      console.log("Returning response...");
+      }
 
       return ok(c, {
-        submissions: submissions.slice(0, 100), // Limit to 100 for display
-        rateLimits: [], // Skip rate limits for now
+        submissions,
         stats: {
-          totalSubmissions: submissions.length,
+          totalSubmissions: await redis.zcard("submission:zset"),
           uniqueEthAddresses: ethAddresses.size,
-          activeRateLimits: 0,
         },
       });
     } catch (error) {
