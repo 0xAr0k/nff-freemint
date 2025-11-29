@@ -166,7 +166,7 @@ export const dashboardHtml = `<!DOCTYPE html>
         h += '<td>' + escapeHtml(s.username) + '</td>';
         h += '<td class="mono">' + escapeHtml(s.discordId) + '</td>';
         h += '<td class="mono truncate" title="' + escapeHtml(s.ethAddress) + '">' + escapeHtml(s.ethAddress) + '</td>';
-        h += '<td class="truncate" title="' + escapeHtml(s.curiosity || '') + '">' + escapeHtml((s.curiosity || '-').replace(/\n/g, ' ').trim()) + '</td>';
+        h += '<td class="truncate" title="' + escapeHtml(s.curiosity) + '">' + escapeHtml(s.curiosity) + '</td>';
         h += '<td>' + (s.isFollowingX ? '<span class="badge badge-yes">Yes</span>' : '<span class="badge badge-no">No</span>') + '</td>';
         h += '<td>' + (s.isDiscordMember ? '<span class="badge badge-yes">Yes</span>' : '<span class="badge badge-no">No</span>') + '</td>';
         h += '<td class="mono">' + escapeHtml(s.ip || 'unknown') + '</td>';
