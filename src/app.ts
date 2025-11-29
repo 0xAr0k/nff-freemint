@@ -24,8 +24,8 @@ app
   .use("*", async (c, next) => {
     c.set("env", env);
     const redis = new Redis({
-      url: env.UPSTASH_REDIS_REST_URL,
-      token: env.UPSTASH_REDIS_REST_TOKEN,
+      url: env.UPSTASH_REDIS_REST_URL.trim(),
+      token: env.UPSTASH_REDIS_REST_TOKEN.trim(),
     });
     if (!redis) return unexpectedError(c);
     c.set("redis", redis);
