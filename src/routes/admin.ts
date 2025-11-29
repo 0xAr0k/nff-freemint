@@ -5,6 +5,7 @@ import { adminMiddleware } from "../middlewares/admin";
 import { ok, unexpectedError } from "../utils/response";
 import { dashboardHtml, loginPageHtml } from "../lib/dashboard";
 import { getCookie, setCookie } from "hono/cookie";
+import { logger } from "../logger";
 
 const app = new Hono();
 
@@ -52,38 +53,40 @@ app
     try {
       const redis = c.get("redis");
 
-      // Use SCAN instead of KEYS
       const submissions: any[] = [];
       const rateLimits: any[] = [];
       const ethAddresses = new Set<string>();
 
-      let cursor = 0;
-      do {
-        const [nextCursor, keys] = await redis.scan(cursor, { count: 100 });
-        cursor = Number(nextCursor);
+      let cursor = "0";
 
-        // Fetch values for this batch
+      do {
+        const [nextCursor, keys] = (await redis.scan(cursor, {
+          count: 100,
+        })) as [string, string[]];
+        cursor = nextCursor;
+
+        console.log("Cursor:", cursor, "Keys:", keys.length, keys.slice(0, 5));
+
         for (const key of keys) {
           const value = await redis.get(key);
           if (!value) continue;
 
           if (key.startsWith("submission:")) {
-            const data = value as any;
-            submissions.push(data);
-            if (data.ethAddress) ethAddresses.add(data.ethAddress);
+            submissions.push(value as any);
+            if ((value as any).ethAddress)
+              ethAddresses.add((value as any).ethAddress);
           } else if (key.startsWith("eth_used:")) {
-            const ethAddress = key.replace("eth_used:", "");
-            ethAddresses.add(ethAddress);
+            ethAddresses.add(key.replace("eth_used:", ""));
           } else if (key.startsWith("rate_limit:")) {
-            const ip = key.replace("rate_limit:", "");
-            const data = value as any;
             rateLimits.push({
-              ip,
-              lastSubmission: data.timestamp,
+              ip: key.replace("rate_limit:", ""),
+              lastSubmission: (value as any).timestamp,
             });
           }
         }
-      } while (cursor !== 0);
+      } while (cursor !== "0");
+
+      console.log("Submissions found:", submissions.length);
 
       submissions.sort((a, b) =>
         (b.timestamp || "").localeCompare(a.timestamp || ""),
