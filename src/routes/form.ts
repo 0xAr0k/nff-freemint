@@ -28,6 +28,7 @@ app
           curiosity,
           isFollowingX,
           isDiscordMember,
+          ipAddress,
         } = await c.req.json();
 
         // Validate ETH address
@@ -78,6 +79,7 @@ app
           isFollowingX,
           isDiscordMember,
           timestamp,
+          ipAddress,
         });
 
         // Mark username as used
