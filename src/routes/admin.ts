@@ -50,52 +50,45 @@ app
   })
   .get("/records", adminMiddleware(), async (c) => {
     try {
-      console.log("1. Getting redis");
       const redis = c.get("redis");
 
-      console.log("2. Getting keys");
-      const keys = await redis.keys("*");
-      console.log("3. Keys count:", keys.length);
-
+      // Use SCAN instead of KEYS
       const submissions: any[] = [];
       const rateLimits: any[] = [];
       const ethAddresses = new Set<string>();
 
-      console.log("4. Fetching values");
-      const keyData = await Promise.all(
-        keys.map(async (key) => {
+      let cursor = 0;
+      do {
+        const [nextCursor, keys] = await redis.scan(cursor, { count: 100 });
+        cursor = Number(nextCursor);
+
+        // Fetch values for this batch
+        for (const key of keys) {
           const value = await redis.get(key);
-          return { key, value };
-        }),
-      );
+          if (!value) continue;
 
-      console.log("5. Processing data");
-      for (const { key, value } of keyData) {
-        if (!value) continue;
-
-        if (key.startsWith("submission:")) {
-          const data = value as any;
-          submissions.push(data);
-          if (data.ethAddress) ethAddresses.add(data.ethAddress);
-        } else if (key.startsWith("eth_used:")) {
-          const ethAddress = key.replace("eth_used:", "");
-          ethAddresses.add(ethAddress);
-        } else if (key.startsWith("rate_limit:")) {
-          const ip = key.replace("rate_limit:", "");
-          const data = value as any;
-          rateLimits.push({
-            ip,
-            lastSubmission: data.timestamp,
-          });
+          if (key.startsWith("submission:")) {
+            const data = value as any;
+            submissions.push(data);
+            if (data.ethAddress) ethAddresses.add(data.ethAddress);
+          } else if (key.startsWith("eth_used:")) {
+            const ethAddress = key.replace("eth_used:", "");
+            ethAddresses.add(ethAddress);
+          } else if (key.startsWith("rate_limit:")) {
+            const ip = key.replace("rate_limit:", "");
+            const data = value as any;
+            rateLimits.push({
+              ip,
+              lastSubmission: data.timestamp,
+            });
+          }
         }
-      }
+      } while (cursor !== 0);
 
-      console.log("6. Sorting");
       submissions.sort((a, b) =>
         (b.timestamp || "").localeCompare(a.timestamp || ""),
       );
 
-      console.log("7. Done, returning", submissions.length, "submissions");
       return ok(c, {
         submissions,
         rateLimits,
