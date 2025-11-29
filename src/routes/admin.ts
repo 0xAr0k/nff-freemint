@@ -57,63 +57,64 @@ app
       const rateLimits: any[] = [];
       const ethAddresses = new Set<string>();
 
-      // Only scan for submission keys
+      console.log("Starting submission scan...");
+
       let cursor = "0";
       let iterations = 0;
 
       do {
-        const [nextCursor, keys] = await redis.scan(cursor, {
+        console.log("Scan iteration:", iterations, "Cursor:", cursor);
+
+        const result = await redis.scan(cursor, {
           match: "submission:*",
           count: 100,
         });
-        cursor = String(nextCursor);
 
-        for (const key of keys) {
-          const value = await redis.get(key);
-          if (!value) continue;
-          submissions.push(value as any);
-          if ((value as any).ethAddress)
-            ethAddresses.add((value as any).ethAddress);
+        console.log("Raw result:", typeof result, Array.isArray(result));
+
+        const nextCursor = String(result[0]);
+        const keys = result[1] as string[];
+
+        console.log("Next cursor:", nextCursor, "Keys found:", keys?.length);
+
+        if (keys && keys.length > 0) {
+          console.log("Sample keys:", keys.slice(0, 3));
+
+          for (const key of keys) {
+            const value = await redis.get(key);
+            if (!value) continue;
+            submissions.push(value as any);
+            if ((value as any).ethAddress)
+              ethAddresses.add((value as any).ethAddress);
+          }
         }
 
+        cursor = nextCursor;
         iterations++;
-        if (iterations >= 50) break; // Safety limit
-      } while (cursor !== "0");
 
-      // Separate scan for rate limits (if you need them)
-      cursor = "0";
-      iterations = 0;
-      do {
-        const [nextCursor, keys] = await redis.scan(cursor, {
-          match: "rate_limit:*",
-          count: 100,
-        });
-        cursor = String(nextCursor);
+        console.log("Submissions so far:", submissions.length);
 
-        for (const key of keys) {
-          const value = await redis.get(key);
-          if (!value) continue;
-          rateLimits.push({
-            ip: key.replace("rate_limit:", ""),
-            lastSubmission: (value as any).timestamp,
-          });
+        if (iterations >= 20) {
+          console.log("Hit max iterations, breaking");
+          break;
         }
-
-        iterations++;
-        if (iterations >= 10) break;
       } while (cursor !== "0");
+
+      console.log("Done scanning. Total submissions:", submissions.length);
 
       submissions.sort((a, b) =>
         (b.timestamp || "").localeCompare(a.timestamp || ""),
       );
 
+      console.log("Returning response...");
+
       return ok(c, {
-        submissions,
-        rateLimits,
+        submissions: submissions.slice(0, 100), // Limit to 100 for display
+        rateLimits: [], // Skip rate limits for now
         stats: {
           totalSubmissions: submissions.length,
           uniqueEthAddresses: ethAddresses.size,
-          activeRateLimits: rateLimits.length,
+          activeRateLimits: 0,
         },
       });
     } catch (error) {
