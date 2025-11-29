@@ -50,13 +50,18 @@ app
   })
   .get("/records", adminMiddleware(), async (c) => {
     try {
+      console.log("1. Getting redis");
       const redis = c.get("redis");
+
+      console.log("2. Getting keys");
       const keys = await redis.keys("*");
+      console.log("3. Keys count:", keys.length);
 
       const submissions: any[] = [];
       const rateLimits: any[] = [];
       const ethAddresses = new Set<string>();
 
+      console.log("4. Fetching values");
       const keyData = await Promise.all(
         keys.map(async (key) => {
           const value = await redis.get(key);
@@ -64,6 +69,7 @@ app
         }),
       );
 
+      console.log("5. Processing data");
       for (const { key, value } of keyData) {
         if (!value) continue;
 
@@ -84,8 +90,12 @@ app
         }
       }
 
-      submissions.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+      console.log("6. Sorting");
+      submissions.sort((a, b) =>
+        (b.timestamp || "").localeCompare(a.timestamp || ""),
+      );
 
+      console.log("7. Done, returning", submissions.length, "submissions");
       return ok(c, {
         submissions,
         rateLimits,
@@ -96,6 +106,7 @@ app
         },
       });
     } catch (error) {
+      console.error("Records error:", error);
       return unexpectedError(c);
     }
   })
