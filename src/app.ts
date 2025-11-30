@@ -8,13 +8,18 @@ import adminRoute from "./routes/admin";
 import formRoute from "./routes/form";
 import { env, EnvBindings } from "./env";
 import { Redis } from "@upstash/redis";
+import { MongoClient, Db } from "mongodb";
+import { connectDB } from "./lib/mongo";
 
 declare module "hono" {
   interface ContextVariableMap {
     env: EnvBindings;
     redis: Redis;
+    db: Db;
   }
 }
+
+const db = await connectDB();
 
 const app = new Hono();
 
@@ -23,6 +28,7 @@ app
   .use(trimTrailingSlash())
   .use("*", async (c, next) => {
     c.set("env", env);
+    c.set("db", db);
     const redis = new Redis({
       url: env.UPSTASH_REDIS_REST_URL.trim(),
       token: env.UPSTASH_REDIS_REST_TOKEN.trim(),

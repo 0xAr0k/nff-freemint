@@ -5,7 +5,6 @@ import { adminMiddleware } from "../middlewares/admin";
 import { ok, unexpectedError } from "../utils/response";
 import { dashboardHtml, loginPageHtml } from "../lib/dashboard";
 import { getCookie, setCookie } from "hono/cookie";
-import { logger } from "../logger";
 
 const app = new Hono();
 
@@ -23,18 +22,17 @@ app
     const adminSecret = c.get("env").ADMIN_SECRET;
 
     if (!password) return c.html(loginPageHtml("Password required"));
-
     if (password !== adminSecret) {
       return c.html(loginPageHtml("Invalid password"));
     }
-    const sessionData = btoa(JSON.stringify({ auth: true }));
 
+    const sessionData = btoa(JSON.stringify({ auth: true }));
     setCookie(c, "admin_session", sessionData, {
       path: "/",
       httpOnly: true,
       sameSite: "Strict",
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 12, // 12h
+      maxAge: 60 * 60 * 12,
     });
 
     return c.redirect("/admin/dashboard");
@@ -45,40 +43,42 @@ app
       httpOnly: true,
       sameSite: "Strict",
       secure: process.env.NODE_ENV === "production",
-      maxAge: 0, // Expire immediately
+      maxAge: 0,
     });
     return c.redirect("/admin");
   })
   .get("/records", adminMiddleware(), async (c) => {
     try {
-      const redis = c.get("redis");
+      const db = c.get("db");
 
-      // Get 100 most recent submissions
-      const keys = await redis.zrange("submission:zset", -100, -1, {
-        rev: true, // newest first
-      });
+      const page = parseInt(c.req.query("page") || "1");
+      const limit = parseInt(c.req.query("limit") || "50");
+      const skip = (page - 1) * limit;
 
-      const submissions: any[] = [];
-      const ethAddresses = new Set<string>();
+      const [submissions, totalSubmissions] = await Promise.all([
+        db
+          .collection("submissions")
+          .find({})
+          .sort({ timestamp: -1 })
+          .skip(skip)
+          .limit(limit)
+          .toArray(),
+        db.collection("submissions").countDocuments(),
+      ]);
 
-      for (const key of keys) {
-        const data = await redis.get(key as string);
-        if (!data) continue;
-
-        const parsed = typeof data === "string" ? JSON.parse(data) : data;
-
-        submissions.push(parsed);
-
-        if (parsed.ethAddress) {
-          ethAddresses.add(parsed.ethAddress);
-        }
-      }
+      const totalPages = Math.ceil(totalSubmissions / limit);
 
       return ok(c, {
         submissions,
         stats: {
-          totalSubmissions: await redis.zcard("submission:zset"),
-          uniqueEthAddresses: ethAddresses.size,
+          totalSubmissions,
+          uniqueEthAddresses: totalSubmissions, // Each eth is unique due to index
+        },
+        pagination: {
+          page,
+          limit,
+          totalPages,
+          hasMore: page < totalPages,
         },
       });
     } catch (error) {
@@ -89,4 +89,5 @@ app
   .get("/dashboard", adminMiddleware(), async (c) => {
     return c.html(dashboardHtml);
   });
+
 export default app;
