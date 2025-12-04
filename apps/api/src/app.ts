@@ -24,6 +24,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://localhost:4173", // Vite preview
+  "https://underlog-staging-a2efcw21dcxz.netlify.app/",
+  "https://therovers.xyz/ ",
   env.FRONTEND_URL,
 ].filter(Boolean) as string[];
 

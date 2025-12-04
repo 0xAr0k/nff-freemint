@@ -28,13 +28,12 @@ export async function connectDB(): Promise<Db> {
   await db.collection("submissions").createIndex({ hasPlayed: 1 });
   await db.collection("submissions").createIndex({ completedAt: -1 });
 
-  // Answers pool indexes
-  await db
-    .collection("answers")
-    .createIndex({ ethAddress: 1 }, { unique: true });
+  // Answers pool indexes - NO unique constraint
+  await db.collection("answers").createIndex({ ethAddress: 1 }); // Removed unique
   await db.collection("answers").createIndex({ timesShown: 1 });
+  await db.collection("answers").createIndex({ isSeeded: 1 }); // New - for filtering
 
-  console.log("MongoDB connected to nff-turing");
+  console.log("MongoDB connected to nff-turing-v2");
   return db;
 }
 
