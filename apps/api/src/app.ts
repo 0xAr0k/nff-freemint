@@ -20,9 +20,26 @@ declare module "hono" {
 
 const db = await connectDB();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:4173", // Vite preview
+  env.FRONTEND_URL,
+].filter(Boolean) as string[];
+
 const app = new Hono();
 app
-  .use(cors())
+  .use(
+    cors({
+      origin: (origin) => {
+        // Check allowed list
+        if (allowedOrigins.includes(origin)) return origin;
+
+        return null;
+      },
+      credentials: true,
+    })
+  )
   .use(trimTrailingSlash())
   .use("*", async (c, next) => {
     c.set("env", env);

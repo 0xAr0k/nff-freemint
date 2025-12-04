@@ -7,6 +7,7 @@ export const envSchema = z.object({
   ADMIN_SECRET: z.string().min(1),
   API_KEY: z.string().min(1),
   OPENAI_API_KEY: z.string().min(1),
+  FRONTEND_URL: z.string().optional(),
 });
 export const env = envSchema.parse(Bun.env);
 export type EnvBindings = z.infer<typeof envSchema>;
