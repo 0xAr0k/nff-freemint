@@ -12,21 +12,14 @@ import {
 import { isRoverHolder } from "../lib/rover-holder";
 import { Round, RoundResult } from "../core/game";
 import { answerSchema, guessSchema, walletSchema } from "../params/game";
-import z from "zod";
 
 const NUM_ROUNDS = 3;
 const PASS_THRESHOLD = 2;
 
-const walletParamSchema = z.object({
-  walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/i),
-});
-
 const app = new Hono();
 
 app
-  .use(cors())
-
-  // Get prompt
+  // GET routes - specific FIRST, wildcard LAST
   .get("/prompt", (c) =>
     ok(c, { question: PROMPT_QUESTION, maxLength: MAX_ANSWER_LENGTH })
   )
@@ -71,11 +64,11 @@ app
       hasMore: offset + limit < total,
     });
   })
-  // Check status - matches frontend: /game/${walletAddress}
+
+  // Wildcard GET - MUST be after specific routes
   .get("/:walletAddress", async (c) => {
     const walletAddress = c.req.param("walletAddress");
 
-    // Validate wallet format
     if (!/^0x[a-fA-F0-9]{40}$/i.test(walletAddress)) {
       return badRequest(c, { error: "Invalid wallet address" });
     }
@@ -116,7 +109,7 @@ app
     });
   })
 
-  // Submit answer to pool
+  // POST routes
   .post("/answer", validator("json", schema(answerSchema)), async (c) => {
     const { walletAddress, answer } = await c.req.json();
     const db = c.get("db");
@@ -154,7 +147,6 @@ app
     });
   })
 
-  // Get rounds
   .post("/rounds", validator("json", schema(walletSchema)), async (c) => {
     const { walletAddress } = await c.req.json();
     const db = c.get("db");
@@ -174,7 +166,6 @@ app
       return badRequest(c, { error: "You have already completed the test." });
     }
 
-    // Return existing rounds
     if (user.rounds?.length === NUM_ROUNDS) {
       return ok(c, {
         rounds: user.rounds.map((r: Round) => ({
@@ -188,7 +179,6 @@ app
       });
     }
 
-    // Get human answers (exclude user's own)
     const availableAnswers = await db
       .collection("answers")
       .find({ ethAddress: { $ne: normalizedEth } })
@@ -204,14 +194,12 @@ app
 
     const selectedAnswers = selectAnswers(availableAnswers, NUM_ROUNDS);
 
-    // Generate AI answers
     const aiAnswers = await Promise.all(
       Array(NUM_ROUNDS)
         .fill(0)
         .map(() => generateAIAnswer())
     );
 
-    // Create rounds
     const rounds: Round[] = [];
     const roundsForClient: any[] = [];
 
@@ -247,7 +235,6 @@ app
     });
   })
 
-  // Submit guesses
   .post("/guess", validator("json", schema(guessSchema)), async (c) => {
     const { walletAddress, guesses } = await c.req.json();
     const db = c.get("db");
@@ -316,8 +303,6 @@ app
       isRoverHolder: isRover,
     });
   });
-
-// Leaderboard
 
 function selectAnswers(answers: any[], count: number) {
   const selected: any[] = [];
