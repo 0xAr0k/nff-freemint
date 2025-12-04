@@ -24,8 +24,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://localhost:4173", // Vite preview
-  "https://underlog-staging-a2efcw21dcxz.netlify.app/",
-  "https://therovers.xyz/ ",
+  "https://underlog-staging-a2efcw21dcxz.netlify.app",
+  "https://therovers.xyz",
   env.FRONTEND_URL,
 ].filter(Boolean) as string[];
 
@@ -37,6 +37,7 @@ app
         // Check allowed list
         if (allowedOrigins.includes(origin)) return origin;
 
+        logger.info(`CORS: Allowed origin ${origin}`);
         return null;
       },
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
