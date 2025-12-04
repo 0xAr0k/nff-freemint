@@ -1,20 +1,36 @@
 import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { trimTrailingSlash } from "hono/trailing-slash";
 import { validator } from "hono/validator";
+import { rateLimiter } from "hono-rate-limiter";
 import { schema } from "../utils/validation";
 import { submitParamsSchema } from "../params/submit";
 import { badRequest, ok, unexpectedError } from "../utils/response";
 import { isAddress, getAddress } from "viem";
 import { isRoverHolder } from "../lib/rover-holder";
-import { MAX_ANSWER_LENGTH } from "../lib/openai";
 
 const app = new Hono();
 
-app
-  .use(cors())
-  .use(trimTrailingSlash())
-  .post("/submit", validator("json", schema(submitParamsSchema)), async (c) => {
+const getClientIp = (c: any): string => {
+  return (
+    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
+    c.req.header("x-real-ip") ||
+    "unknown"
+  );
+};
+
+// 5 submissions per hour per IP
+const submitLimiter = rateLimiter({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  keyGenerator: (c) => getClientIp(c),
+  handler: (c) =>
+    c.json({ error: "Too many submissions. Try again in 1 hour." }, 429),
+});
+
+app.post(
+  "/submit",
+  submitLimiter,
+  validator("json", schema(submitParamsSchema)),
+  async (c) => {
     try {
       const db = c.get("db");
       const {
@@ -32,6 +48,7 @@ app
       const normalizedEth = getAddress(walletAddress).toLowerCase();
       const normalizedXHandle = xHandle.toLowerCase().replace(/^@/, "");
       const isRover = isRoverHolder(normalizedEth);
+      const clientIp = getClientIp(c);
 
       // Check duplicates
       const existing = await db.collection("submissions").findOne({
@@ -62,7 +79,6 @@ app
 
       const timestamp = new Date().toISOString();
 
-      // Insert submission
       await db.collection("submissions").insertOne({
         ethAddress: normalizedEth,
         xHandle: normalizedXHandle,
@@ -70,6 +86,7 @@ app
         discordUsername,
         followingX,
         joinedDiscord,
+        ip: clientIp,
         timestamp,
         createdAt: new Date(),
 
@@ -90,13 +107,12 @@ app
       });
     } catch (error: any) {
       if (error.code === 11000) {
-        return badRequest(c, {
-          error: "Already registered",
-        });
+        return badRequest(c, { error: "Already registered" });
       }
       console.error("Submit error:", error);
       return unexpectedError(c);
     }
-  });
+  }
+);
 
 export default app;

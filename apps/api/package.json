@@ -19,6 +19,7 @@
   "dependencies": {
     "@upstash/redis": "^1.35.6",
     "hono": "^4.10.7",
+    "hono-rate-limiter": "^0.4.2",
     "mongodb": "^7.0.0",
     "openai": "^6.9.1",
     "pino": "^10.1.0",

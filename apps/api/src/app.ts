@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 import { trimTrailingSlash } from "hono/trailing-slash";
+import { rateLimiter } from "hono-rate-limiter";
 import { Db } from "mongodb";
 import { env, EnvBindings } from "./env";
 import { connectDB } from "./lib/mongo";
@@ -19,32 +19,66 @@ declare module "hono" {
 }
 
 const db = await connectDB();
+const app = new Hono();
 
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  "http://localhost:4173", // Vite preview
+  "http://localhost:4173",
   "https://underlog-staging-a2efcw21dcxz.netlify.app",
   "https://therovers.xyz",
-  env.FRONTEND_URL,
-].filter(Boolean) as string[];
+  "https://www.therovers.xyz",
+  env.FRONTEND_URL?.replace(/\/$/, ""),
+].filter(Boolean);
 
-const app = new Hono();
+const getClientIp = (c: any): string => {
+  return (
+    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
+    c.req.header("x-real-ip") ||
+    c.req.header("cf-connecting-ip") ||
+    "unknown"
+  );
+};
+
+// CORS middleware
+app.use("*", async (c, next) => {
+  const origin = c.req.header("origin");
+
+  const isAllowed =
+    !origin ||
+    allowedOrigins.includes(origin) ||
+    origin.endsWith(".up.railway.app") ||
+    origin.endsWith(".netlify.app") ||
+    origin.endsWith(".vercel.app");
+
+  if (isAllowed) {
+    c.header("Access-Control-Allow-Origin", origin || "*");
+    c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    c.header("Access-Control-Allow-Credentials", "true");
+  }
+
+  if (c.req.method === "OPTIONS") {
+    return c.body(null, 204);
+  }
+
+  await next();
+});
+
+// Global rate limit - 100 requests per minute per IP
+app.use(
+  "*",
+  rateLimiter({
+    windowMs: 60 * 1000,
+    limit: 100,
+    standardHeaders: "draft-6",
+    keyGenerator: (c) => getClientIp(c),
+    handler: (c) =>
+      c.json({ error: "Too many requests. Try again later." }, 429),
+  })
+);
+
 app
-  .use(
-    cors({
-      origin: (origin) => {
-        // Check allowed list
-        if (allowedOrigins.includes(origin)) return origin;
-
-        logger.info(`CORS: Allowed origin ${origin}`);
-        return null;
-      },
-      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowHeaders: ["Content-Type", "Authorization"],
-      credentials: true,
-    })
-  )
   .use(trimTrailingSlash())
   .use("*", async (c, next) => {
     c.set("env", env);
