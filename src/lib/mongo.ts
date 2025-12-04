@@ -12,7 +12,7 @@ export async function connectDB(): Promise<Db> {
   });
 
   await client.connect();
-  db = client.db("nff-freemint");
+  db = client.db("nff-turing");
 
   await db
     .collection("submissions")
