@@ -39,6 +39,8 @@ app
 
         return null;
       },
+      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowHeaders: ["Content-Type", "Authorization"],
       credentials: true,
     })
   )

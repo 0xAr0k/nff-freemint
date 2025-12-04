@@ -167,7 +167,7 @@ async function seed() {
 
   try {
     await client.connect();
-    const db = client.db("nff-turing-v2");
+    const db = client.db("nff-turing");
 
     console.log("Connected to MongoDB");
 
