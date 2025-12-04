@@ -1,0 +1,9 @@
+{
+  "extends": "@nff-turing/tsconfig/base.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "jsxImportSource": "hono/jsx"
+  },
+  "include": ["./src/**/*.ts"],
+  "exclude": ["node_modules"]
+}

@@ -106,9 +106,8 @@ app
               trickPoints: 0,
               createdAt: new Date(),
             });
-          } catch (err: any) {
-            // Ignore duplicate error
-            if (err.code !== 11000) console.error("Answer insert error:", err);
+          } catch (err) {
+            return unexpectedError(c);
           }
         }
 
@@ -117,17 +116,11 @@ app
           message: "Application submitted successfully",
           isRoverHolder: isRover,
         });
-      } catch (error: any) {
-        if (error.code === 11000) {
-          return badRequest(c, {
-            error: "duplicate",
-            message: "Already submitted",
-          });
-        }
+      } catch (error) {
         console.error("Submit error:", error);
         return unexpectedError(c);
       }
-    },
+    }
   );
 
 export default app;

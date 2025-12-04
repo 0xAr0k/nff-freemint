@@ -34,7 +34,7 @@ app
   .route("/form", formRoute)
   .route("/game", gameRoute)
   .get("*", (c) =>
-    notFound(c, { message: `Path ${c.req.method} ${c.req.path} not found` }),
+    notFound(c, { message: `Path ${c.req.method} ${c.req.path} not found` })
   )
   .onError((err, c) => {
     const httpResponse = err as HTTPResponseError;

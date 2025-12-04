@@ -1,27 +1,29 @@
 {
-  "name": "nff-code-redeemer",
+  "name": "nff-turing",
   "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "packageManager": "bun@1.2.23",
+  "workspaces": ["apps/*", "packages/*", "services/*"],
   "scripts": {
-    "clean": "rm -rf dist",
-    "dev": "bun --watch run ./src/index.ts",
-    "build": "bun build ./src/index.ts --target bun --packages external --outdir dist",
-    "start": "bun run dist/index.js",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint src/"
+    "clean": "bun --filter '*' clean",
+    "dev": "bun --filter '*' dev",
+    "build": "bun --filter '*' build",
+    "start": "bun --filter '*' start",
+    "test": "bun --filter '*' test",
+    "format": "bun --filter '*' format",
+    "lint": "bun --filter '*' lint",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "eslint": "^9.35.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.6.2",
+    "undici": "^7.16.0"
   },
   "peerDependencies": {
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "@upstash/redis": "^1.35.6",
-    "hono": "^4.10.7",
-    "mongodb": "^7.0.0",
-    "openai": "^6.9.1",
-    "pino": "^10.1.0",
-    "viem": "^2.40.3",
-    "zod": "^4.1.13"
+    "typescript": "^5.9.2"
   }
 }
