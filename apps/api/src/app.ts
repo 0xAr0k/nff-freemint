@@ -65,7 +65,6 @@ app.use("*", async (c, next) => {
   await next();
 });
 
-// Global rate limit - 100 requests per minute per IP
 app.use(
   "*",
   rateLimiter({

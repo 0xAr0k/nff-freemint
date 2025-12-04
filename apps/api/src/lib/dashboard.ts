@@ -239,15 +239,15 @@ export const loginPageHtml = (error?: string) => `
   <style>
     body { font-family: sans-serif; padding: 40px; background: #f8fafc; }
     form { max-width: 320px; margin: auto; padding: 20px; background: white; border-radius: 8px; }
-    input { width: 100%; margin-top: 10px; padding: 8px; box-sizing: border-box; }
-    button { width: 100%; margin-top: 15px; padding: 10px; background: #000; color: #fff; border: none; cursor: pointer; }
+    input { width: 100%; margin-top: 10px; padding: 8px; }
+    button { width: 100%; margin-top: 15px; padding: 10px; background: #000; color: #fff; border: none; }
     .error { color: red; margin-bottom: 10px; }
   </style>
 </head>
 <body>
   <form method="POST" action="/admin/login">
     <h2>Admin Login</h2>
-    \${error ? \`<div class="error">\${error}</div>\` : ""}
+    ${error ? `<div class="error">${error}</div>` : ""}
     <input type="password" name="password" placeholder="Password" required />
     <button type="submit">Login</button>
   </form>
