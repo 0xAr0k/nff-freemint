@@ -1,28 +1,11 @@
 import z from "zod";
 
 export const submitParamsSchema = z.object({
-  username: z.string({
-    error: (issue) =>
-      issue.input === undefined ? "This field is required" : "not a string",
-  }),
-  discordId: z.string({
-    error: (issue) =>
-      issue.input === undefined ? "This field is required" : "not a string",
-  }),
-  ethAddress: z.string({
-    error: (issue) =>
-      issue.input === undefined ? "This field is required" : "not a string",
-  }),
-  curiosity: z.string({
-    error: (issue) =>
-      issue.input === undefined ? "This field is required" : "not a string",
-  }),
-  isFollowingX: z.boolean({
-    error: (issue) =>
-      issue.input === undefined ? "This field is required" : "not a boolean",
-  }),
-  isDiscordMember: z.boolean({
-    error: (issue) =>
-      issue.input === undefined ? "This field is required" : "not a boolean",
-  }),
+  walletAddress: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{40}$/i, "Invalid wallet address"),
+  xHandle: z.string().min(1, "X handle required"),
+  discordUsername: z.string().min(1, "Discord username required"),
+  followingX: z.boolean(),
+  joinedDiscord: z.boolean(),
 });

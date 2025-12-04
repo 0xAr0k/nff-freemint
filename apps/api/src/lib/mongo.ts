@@ -14,25 +14,27 @@ export async function connectDB(): Promise<Db> {
   await client.connect();
   db = client.db("nff-turing");
 
+  // Submissions indexes
   await db
     .collection("submissions")
     .createIndex({ ethAddress: 1 }, { unique: true });
   await db
     .collection("submissions")
-    .createIndex({ username: 1 }, { unique: true });
+    .createIndex({ xHandle: 1 }, { unique: true });
   await db
     .collection("submissions")
-    .createIndex({ discordId: 1 }, { unique: true });
+    .createIndex({ discordUsername: 1 }, { unique: true });
   await db.collection("submissions").createIndex({ timestamp: -1 });
   await db.collection("submissions").createIndex({ hasPlayed: 1 });
   await db.collection("submissions").createIndex({ completedAt: -1 });
 
+  // Answers pool indexes
   await db
     .collection("answers")
     .createIndex({ ethAddress: 1 }, { unique: true });
   await db.collection("answers").createIndex({ timesShown: 1 });
 
-  console.log("MongoDB connected");
+  console.log("MongoDB connected to nff-turing");
   return db;
 }
 

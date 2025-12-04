@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { trimTrailingSlash } from "hono/trailing-slash";
-import { apiKeyMiddleware } from "../middlewares/api-key";
 import { validator } from "hono/validator";
 import { schema } from "../utils/validation";
 import { submitParamsSchema } from "../params/submit";
@@ -15,112 +14,89 @@ const app = new Hono();
 app
   .use(cors())
   .use(trimTrailingSlash())
-  .post(
-    "/submit",
-    validator("json", schema(submitParamsSchema)),
-    apiKeyMiddleware(),
-    async (c) => {
-      try {
-        const db = c.get("db");
-        const {
-          username,
-          discordId,
-          ethAddress,
-          curiosity,
-          isFollowingX,
-          isDiscordMember,
-          ipAddress,
-        } = await c.req.json();
+  .post("/submit", validator("json", schema(submitParamsSchema)), async (c) => {
+    try {
+      const db = c.get("db");
+      const {
+        walletAddress,
+        xHandle,
+        discordUsername,
+        followingX,
+        joinedDiscord,
+      } = await c.req.json();
 
-        if (!isAddress(ethAddress)) {
-          return badRequest(c, { error: "Invalid ETH address" });
-        }
-
-        const normalizedEth = getAddress(ethAddress).toLowerCase();
-        const normalizedUsername = username.toLowerCase();
-        const isRover = isRoverHolder(normalizedEth);
-
-        // Check duplicates
-        const existing = await db.collection("submissions").findOne({
-          $or: [
-            { ethAddress: normalizedEth },
-            { username: normalizedUsername },
-            { discordId: discordId },
-          ],
-        });
-
-        if (existing) {
-          if (existing.ethAddress === normalizedEth) {
-            return badRequest(c, {
-              error: "eth_already_submitted",
-              message: "This ETH address has already submitted an application",
-            });
-          }
-          if (existing.username === normalizedUsername) {
-            return badRequest(c, {
-              error: "username_already_submitted",
-              message: "This username has already submitted an application",
-            });
-          }
-          if (existing.discordId === discordId) {
-            return badRequest(c, {
-              error: "discord_already_submitted",
-              message:
-                "This Discord account has already submitted an application",
-            });
-          }
-        }
-
-        const timestamp = new Date().toISOString();
-
-        // Insert submission with game fields
-        await db.collection("submissions").insertOne({
-          username: normalizedUsername,
-          usernameOriginal: username,
-          discordId,
-          ethAddress: normalizedEth,
-          curiosity,
-          isFollowingX,
-          isDiscordMember,
-          ip: ipAddress || "unknown",
-          timestamp,
-          createdAt: new Date(),
-
-          // Game fields
-          hasPlayed: false,
-          testStatus: null,
-          correctAnswers: 0,
-          totalRounds: 0,
-          rounds: [],
-          roundResults: [],
-          completedAt: null,
-        });
-
-        // Add curiosity to answer pool if valid
-        if (curiosity?.trim() && curiosity.trim().length <= MAX_ANSWER_LENGTH) {
-          try {
-            await db.collection("answers").insertOne({
-              ethAddress: normalizedEth,
-              answer: curiosity.trim(),
-              timesShown: 0,
-              trickPoints: 0,
-              createdAt: new Date(),
-            });
-          } catch (err) {
-            return unexpectedError(c);
-          }
-        }
-
-        return ok(c, {
-          success: true,
-          message: "Application submitted successfully",
-          isRoverHolder: isRover,
-        });
-      } catch (error) {
-        console.error("Submit error:", error);
-        return unexpectedError(c);
+      if (!isAddress(walletAddress)) {
+        return badRequest(c, { error: "Invalid wallet address" });
       }
+
+      const normalizedEth = getAddress(walletAddress).toLowerCase();
+      const normalizedXHandle = xHandle.toLowerCase().replace(/^@/, "");
+      const isRover = isRoverHolder(normalizedEth);
+
+      // Check duplicates
+      const existing = await db.collection("submissions").findOne({
+        $or: [
+          { ethAddress: normalizedEth },
+          { xHandle: normalizedXHandle },
+          { discordUsername: discordUsername },
+        ],
+      });
+
+      if (existing) {
+        if (existing.ethAddress === normalizedEth) {
+          return badRequest(c, {
+            error: "This wallet has already been registered",
+          });
+        }
+        if (existing.xHandle === normalizedXHandle) {
+          return badRequest(c, {
+            error: "This X handle has already been used",
+          });
+        }
+        if (existing.discordUsername === discordUsername) {
+          return badRequest(c, {
+            error: "This Discord username has already been used",
+          });
+        }
+      }
+
+      const timestamp = new Date().toISOString();
+
+      // Insert submission
+      await db.collection("submissions").insertOne({
+        ethAddress: normalizedEth,
+        xHandle: normalizedXHandle,
+        xHandleOriginal: xHandle,
+        discordUsername,
+        followingX,
+        joinedDiscord,
+        timestamp,
+        createdAt: new Date(),
+
+        // Game fields
+        hasPlayed: false,
+        testStatus: null,
+        correctAnswers: 0,
+        totalRounds: 0,
+        rounds: [],
+        roundResults: [],
+        completedAt: null,
+      });
+
+      return ok(c, {
+        success: true,
+        message: "Wallet registered successfully",
+        isRoverHolder: isRover,
+      });
+    } catch (error: any) {
+      if (error.code === 11000) {
+        return badRequest(c, {
+          error: "Already registered",
+        });
+      }
+      console.error("Submit error:", error);
+      return unexpectedError(c);
     }
-  );
+  });
 
 export default app;

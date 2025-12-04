@@ -38,7 +38,7 @@ function App() {
 
       // Check wallet status (this will also confirm Rover holder status)
       const encodedAddress = encodeURIComponent(walletData.walletAddress);
-      const statusResponse = await fetch(getApiUrl(`wallet/${encodedAddress}`));
+      const statusResponse = await fetch(getApiUrl(`game/${encodedAddress}`));
       const statusData = await statusResponse.json();
       setWalletStatus(statusData);
 
@@ -96,7 +96,7 @@ function App() {
   const handleWalletCheck = async (walletAddress) => {
     try {
       const encodedAddress = encodeURIComponent(walletAddress);
-      const response = await fetch(getApiUrl(`wallet/${encodedAddress}`));
+      const response = await fetch(getApiUrl(`game/${encodedAddress}`));
 
       if (!response.ok) {
         const errorData = await response.json();
