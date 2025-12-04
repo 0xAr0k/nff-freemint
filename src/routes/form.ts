@@ -7,6 +7,8 @@ import { schema } from "../utils/validation";
 import { submitParamsSchema } from "../params/submit";
 import { badRequest, ok, unexpectedError } from "../utils/response";
 import { isAddress, getAddress } from "viem";
+import { isRoverHolder } from "../lib/rover-holder";
+import { MAX_ANSWER_LENGTH } from "../lib/openai";
 
 const app = new Hono();
 
@@ -20,7 +22,6 @@ app
     async (c) => {
       try {
         const db = c.get("db");
-
         const {
           username,
           discordId,
@@ -34,10 +35,12 @@ app
         if (!isAddress(ethAddress)) {
           return badRequest(c, { error: "Invalid ETH address" });
         }
+
         const normalizedEth = getAddress(ethAddress).toLowerCase();
         const normalizedUsername = username.toLowerCase();
+        const isRover = isRoverHolder(normalizedEth);
 
-        // Check duplicates in one query
+        // Check duplicates
         const existing = await db.collection("submissions").findOne({
           $or: [
             { ethAddress: normalizedEth },
@@ -70,6 +73,7 @@ app
 
         const timestamp = new Date().toISOString();
 
+        // Insert submission with game fields
         await db.collection("submissions").insertOne({
           username: normalizedUsername,
           usernameOriginal: username,
@@ -81,11 +85,37 @@ app
           ip: ipAddress || "unknown",
           timestamp,
           createdAt: new Date(),
+
+          // Game fields
+          hasPlayed: false,
+          testStatus: null,
+          correctAnswers: 0,
+          totalRounds: 0,
+          rounds: [],
+          roundResults: [],
+          completedAt: null,
         });
+
+        // Add curiosity to answer pool if valid
+        if (curiosity?.trim() && curiosity.trim().length <= MAX_ANSWER_LENGTH) {
+          try {
+            await db.collection("answers").insertOne({
+              ethAddress: normalizedEth,
+              answer: curiosity.trim(),
+              timesShown: 0,
+              trickPoints: 0,
+              createdAt: new Date(),
+            });
+          } catch (err: any) {
+            // Ignore duplicate error
+            if (err.code !== 11000) console.error("Answer insert error:", err);
+          }
+        }
 
         return ok(c, {
           success: true,
           message: "Application submitted successfully",
+          isRoverHolder: isRover,
         });
       } catch (error: any) {
         if (error.code === 11000) {

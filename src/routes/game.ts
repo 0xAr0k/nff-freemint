@@ -9,74 +9,93 @@ import {
   PROMPT_QUESTION,
   MAX_ANSWER_LENGTH,
 } from "../lib/openai";
-import { Answer, Round, RoundResult } from "../core/game";
+import { isRoverHolder } from "../lib/rover-holder";
+import { Round, RoundResult } from "../core/game";
 import { answerSchema, guessSchema, walletSchema } from "../params/game";
 
 const NUM_ROUNDS = 3;
-const PASS_THRESHOLD = 2; // 2+ correct = pass
+const PASS_THRESHOLD = 2;
 
 const app = new Hono();
 
 app
   .use(cors())
 
-  // Get prompt question
+  // Get prompt
   .get("/prompt", (c) =>
     ok(c, { question: PROMPT_QUESTION, maxLength: MAX_ANSWER_LENGTH }),
   )
 
-  // Check wallet status
-  .get("/status/:ethAddress", async (c) => {
-    const ethAddress = c.req.param("ethAddress").toLowerCase();
-    const db = c.get("db");
+  // Check status
+  .get(
+    "/status/:ethAddress",
+    validator("param", schema(walletSchema)),
+    async (c) => {
+      const { ethAddress } = c.req.valid("param");
+      const normalizedEth = ethAddress.toLowerCase();
+      const db = c.get("db");
+      const isRover = isRoverHolder(normalizedEth);
 
-    const user = await db.collection("submissions").findOne({ ethAddress });
+      const user = await db
+        .collection("submissions")
+        .findOne({ ethAddress: normalizedEth });
 
-    if (!user) {
-      return ok(c, { exists: false, hasPlayed: false, testStatus: null });
-    }
+      if (!user) {
+        return ok(c, {
+          exists: false,
+          hasPlayed: false,
+          testStatus: null,
+          isRoverHolder: isRover,
+        });
+      }
 
-    let status = null;
-    if (user.testStatus === "passed") {
-      status = user.correctAnswers === 3 ? "PERFECT" : "PASS";
-    } else if (user.testStatus === "failed") {
-      status = "FAIL";
-    }
+      let status = null;
+      if (user.testStatus === "passed") {
+        status = user.correctAnswers === 3 ? "PERFECT" : "PASS";
+      } else if (user.testStatus === "failed") {
+        status = "FAIL";
+      }
 
-    return ok(c, {
-      exists: true,
-      hasPlayed: user.hasPlayed || false,
-      testStatus: user.testStatus,
-      status,
-      correctAnswers: user.correctAnswers || 0,
-      totalRounds: user.totalRounds || 0,
-      roundResults: user.roundResults || [],
-    });
-  })
+      return ok(c, {
+        exists: true,
+        hasPlayed: user.hasPlayed || false,
+        testStatus: user.testStatus,
+        status,
+        correctAnswers: user.correctAnswers || 0,
+        totalRounds: user.totalRounds || 0,
+        roundResults: user.roundResults || [],
+        isRoverHolder: isRover,
+      });
+    },
+  )
 
-  // Submit answer to pool (optional - adds to answer pool for others)
+  // Submit answer to pool
   .post("/answer", validator("json", schema(answerSchema)), async (c) => {
     const { ethAddress, answer } = await c.req.json();
     const db = c.get("db");
     const normalizedEth = ethAddress.toLowerCase();
+    const isRover = isRoverHolder(normalizedEth);
 
-    // Check user exists
     const user = await db
       .collection("submissions")
       .findOne({ ethAddress: normalizedEth });
     if (!user) {
-      return badRequest(c, { error: "User not found. Please register first." });
+      return badRequest(c, {
+        error: "not_registered",
+        message: "Register first",
+      });
     }
 
-    // Check if already submitted an answer
     const existingAnswer = await db
       .collection("answers")
       .findOne({ ethAddress: normalizedEth });
     if (existingAnswer) {
-      return badRequest(c, { error: "You have already submitted an answer." });
+      return badRequest(c, {
+        error: "answer_exists",
+        message: "Already submitted an answer",
+      });
     }
 
-    // Add to answer pool
     await db.collection("answers").insertOne({
       ethAddress: normalizedEth,
       answer: answer.trim(),
@@ -85,95 +104,109 @@ app
       createdAt: new Date(),
     });
 
-    return ok(c, { success: true, message: "Answer submitted to pool" });
+    return ok(c, {
+      success: true,
+      message: "Answer submitted",
+      isRoverHolder: isRover,
+    });
   })
 
-  // Get game rounds
+  // Get rounds
   .post("/rounds", validator("json", schema(walletSchema)), async (c) => {
     const { ethAddress } = await c.req.json();
     const db = c.get("db");
     const normalizedEth = ethAddress.toLowerCase();
+    const isRover = isRoverHolder(normalizedEth);
 
-    // Check user exists
     const user = await db
       .collection("submissions")
       .findOne({ ethAddress: normalizedEth });
     if (!user) {
-      return badRequest(c, { error: "User not found. Please register first." });
-    }
-
-    // Check if already played
-    if (user.hasPlayed) {
       return badRequest(c, {
-        error: "You have already completed the test. One attempt per wallet.",
+        error: "not_registered",
+        message: "Register first",
       });
     }
 
-    // If rounds already exist, return them
-    if (user.rounds && user.rounds.length === NUM_ROUNDS) {
-      const roundsForClient = user.rounds.map((r: Round) => ({
-        roundNumber: r.roundNumber,
-        answer1: r.answer1,
-        answer2: r.answer2,
-        hOne: r.humanAnswerIsFirst,
-      }));
-      return ok(c, { rounds: roundsForClient, totalRounds: NUM_ROUNDS });
+    if (user.hasPlayed) {
+      return badRequest(c, {
+        error: "already_played",
+        message: "Already completed the test",
+      });
     }
 
-    // Get available human answers (exclude user's own)
+    // Return existing rounds
+    if (user.rounds?.length === NUM_ROUNDS) {
+      return ok(c, {
+        rounds: user.rounds.map((r: Round) => ({
+          roundNumber: r.roundNumber,
+          answer1: r.answer1,
+          answer2: r.answer2,
+          hOne: r.humanAnswerIsFirst,
+        })),
+        totalRounds: NUM_ROUNDS,
+        isRoverHolder: isRover,
+      });
+    }
+
+    // Get human answers
     const availableAnswers = await db
       .collection("answers")
       .find({ ethAddress: { $ne: normalizedEth } })
-      .sort({ timesShown: 1 }) // Prioritize less-shown answers
-      .limit(NUM_ROUNDS * 3) // Get extra for selection
+      .sort({ timesShown: 1 })
+      .limit(NUM_ROUNDS * 3)
       .toArray();
 
     if (availableAnswers.length < NUM_ROUNDS) {
       return badRequest(c, {
-        error: "Not enough answers in the pool yet. Please try again later.",
+        error: "not_enough_answers",
+        message: "Not enough answers yet",
       });
     }
 
-    // Select answers with weighted randomization
     const selectedAnswers = selectAnswers(availableAnswers, NUM_ROUNDS);
 
     // Generate AI answers
-    const aiAnswers: string[] = [];
-    for (let i = 0; i < NUM_ROUNDS; i++) {
-      aiAnswers.push(await generateAIAnswer());
-    }
+    const aiAnswers = await Promise.all(
+      Array(NUM_ROUNDS)
+        .fill(0)
+        .map(() => generateAIAnswer()),
+    );
 
     // Create rounds
     const rounds: Round[] = [];
     const roundsForClient: any[] = [];
 
     for (let i = 0; i < NUM_ROUNDS; i++) {
-      const humanAnswer = selectedAnswers[i];
-      const aiAnswer = aiAnswers[i];
-      const isHumanFirst = Math.random() > 0.5;
+      const human = selectedAnswers[i];
+      const ai = aiAnswers[i];
+      const humanFirst = Math.random() > 0.5;
 
       rounds.push({
         roundNumber: i + 1,
-        answer1: isHumanFirst ? humanAnswer.answer : aiAnswer,
-        answer2: isHumanFirst ? aiAnswer : humanAnswer.answer,
-        humanAnswerId: humanAnswer._id.toString(),
-        humanAnswerIsFirst: isHumanFirst,
+        answer1: humanFirst ? human.answer : ai,
+        answer2: humanFirst ? ai : human.answer,
+        humanAnswerId: human._id.toString(),
+        humanAnswerIsFirst: humanFirst,
       });
 
       roundsForClient.push({
         roundNumber: i + 1,
-        answer1: isHumanFirst ? humanAnswer.answer : aiAnswer,
-        answer2: isHumanFirst ? aiAnswer : humanAnswer.answer,
-        hOne: isHumanFirst,
+        answer1: humanFirst ? human.answer : ai,
+        answer2: humanFirst ? ai : human.answer,
+        hOne: humanFirst,
       });
     }
 
-    // Save rounds to user
     await db
       .collection("submissions")
       .updateOne({ ethAddress: normalizedEth }, { $set: { rounds } });
 
-    return ok(c, { rounds: roundsForClient, totalRounds: NUM_ROUNDS });
+    return ok(c, {
+      rounds: roundsForClient,
+      totalRounds: NUM_ROUNDS,
+      isRoverHolder: isRover,
+    });
   })
 
   // Submit guesses
@@ -181,39 +214,28 @@ app
     const { ethAddress, guesses } = await c.req.json();
     const db = c.get("db");
     const normalizedEth = ethAddress.toLowerCase();
+    const isRover = isRoverHolder(normalizedEth);
 
     const user = await db
       .collection("submissions")
       .findOne({ ethAddress: normalizedEth });
-    if (!user) {
-      return badRequest(c, { error: "User not found." });
-    }
+    if (!user) return badRequest(c, { error: "not_registered" });
+    if (user.hasPlayed) return badRequest(c, { error: "already_played" });
+    if (!user.rounds?.length)
+      return badRequest(c, { error: "no_rounds", message: "Start game first" });
 
-    if (user.hasPlayed) {
-      return badRequest(c, { error: "You have already completed the test." });
-    }
-
-    if (!user.rounds || user.rounds.length !== NUM_ROUNDS) {
-      return badRequest(c, {
-        error: "Rounds not initialized. Start the game first.",
-      });
-    }
-
-    // Process guesses
-    let correctCount = 0;
-    const roundResults: RoundResult[] = [];
+    let correct = 0;
+    const results: RoundResult[] = [];
 
     for (let i = 0; i < NUM_ROUNDS; i++) {
       const guess = guesses[i];
       const round = user.rounds[i] as Round;
-
       const isCorrect =
         (guess === 1 && round.humanAnswerIsFirst) ||
         (guess === 2 && !round.humanAnswerIsFirst);
 
-      if (isCorrect) correctCount++;
+      if (isCorrect) correct++;
 
-      // Update timesShown for human answer
       await db
         .collection("answers")
         .updateOne(
@@ -221,7 +243,7 @@ app
           { $inc: { timesShown: 1 } },
         );
 
-      roundResults.push({
+      results.push({
         roundNumber: i + 1,
         isCorrect,
         humanAnswerId: round.humanAnswerId,
@@ -229,35 +251,30 @@ app
       });
     }
 
-    // Determine status
-    const testStatus = correctCount >= PASS_THRESHOLD ? "passed" : "failed";
-    let status: string;
-    if (correctCount === 3) status = "PERFECT";
-    else if (correctCount >= 2) status = "PASS";
-    else status = "FAIL";
+    const testStatus = correct >= PASS_THRESHOLD ? "passed" : "failed";
+    const status = correct === 3 ? "PERFECT" : correct >= 2 ? "PASS" : "FAIL";
 
-    // Update user
     await db.collection("submissions").updateOne(
       { ethAddress: normalizedEth },
       {
         $set: {
           hasPlayed: true,
           testStatus,
-          correctAnswers: correctCount,
+          correctAnswers: correct,
           totalRounds: NUM_ROUNDS,
-          roundResults,
+          roundResults: results,
           completedAt: new Date(),
         },
       },
     );
 
     return ok(c, {
-      success: true,
-      correctAnswers: correctCount,
+      correctAnswers: correct,
       totalRounds: NUM_ROUNDS,
       testStatus,
       status,
-      roundResults,
+      roundResults: results,
+      isRoverHolder: isRover,
     });
   })
 
@@ -278,22 +295,20 @@ app
       db.collection("submissions").countDocuments({ hasPlayed: true }),
     ]);
 
-    const leaderboard = entries.map((user, index) => {
-      let status = "FAIL";
-      if (user.testStatus === "passed") {
-        status = user.correctAnswers === 3 ? "PERFECT" : "PASS";
-      }
-
-      return {
-        rank: total - (offset + index),
-        ethAddress: user.ethAddress,
-        username: user.usernameOriginal || user.username,
-        status,
-        correctAnswers: user.correctAnswers || 0,
-        totalRounds: user.totalRounds || 0,
-        completedAt: user.completedAt,
-      };
-    });
+    const leaderboard = entries.map((u, i) => ({
+      rank: total - (offset + i),
+      ethAddress: u.ethAddress,
+      username: u.usernameOriginal || u.username,
+      status:
+        u.correctAnswers === 3
+          ? "PERFECT"
+          : u.correctAnswers >= 2
+            ? "PASS"
+            : "FAIL",
+      correctAnswers: u.correctAnswers || 0,
+      completedAt: u.completedAt,
+      isRoverHolder: isRoverHolder(u.ethAddress),
+    }));
 
     return ok(c, {
       leaderboard,
@@ -304,24 +319,19 @@ app
     });
   });
 
-// Helper: Select answers with weighted randomization
-function selectAnswers(answers: any[], count: number): any[] {
+function selectAnswers(answers: any[], count: number) {
   const selected: any[] = [];
   const used = new Set<string>();
 
-  // Weight by inverse of timesShown (fairness)
-  const weighted = answers.map((a) => ({
-    ...a,
-    weight: 1 / Math.sqrt((a.timesShown || 0) + 1),
-  }));
+  const weighted = answers
+    .map((a) => ({ ...a, weight: 1 / Math.sqrt((a.timesShown || 0) + 1) }))
+    .sort((a, b) => b.weight - a.weight);
 
-  weighted.sort((a, b) => b.weight - a.weight);
-
-  for (const answer of weighted) {
+  for (const a of weighted) {
     if (selected.length >= count) break;
-    if (!used.has(answer._id.toString())) {
-      selected.push(answer);
-      used.add(answer._id.toString());
+    if (!used.has(a._id.toString())) {
+      selected.push(a);
+      used.add(a._id.toString());
     }
   }
 
