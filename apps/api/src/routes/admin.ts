@@ -5,6 +5,7 @@ import { adminMiddleware } from "../middlewares/admin";
 import { ok, unexpectedError } from "../utils/response";
 import { dashboardHtml, loginPageHtml } from "../lib/dashboard";
 import { getCookie, setCookie } from "hono/cookie";
+import { isRoverHolder } from "../lib/rover-holder";
 
 const app = new Hono();
 
@@ -55,24 +56,35 @@ app
       const limit = parseInt(c.req.query("limit") || "50");
       const skip = (page - 1) * limit;
 
-      const [submissions, totalSubmissions] = await Promise.all([
-        db
-          .collection("submissions")
-          .find({})
-          .sort({ timestamp: -1 })
-          .skip(skip)
-          .limit(limit)
-          .toArray(),
-        db.collection("submissions").countDocuments(),
-      ]);
+      const [submissions, totalSubmissions, totalPlayed, totalPassed] =
+        await Promise.all([
+          db
+            .collection("submissions")
+            .find({})
+            .sort({ timestamp: -1 })
+            .skip(skip)
+            .limit(limit)
+            .toArray(),
+          db.collection("submissions").countDocuments(),
+          db.collection("submissions").countDocuments({ hasPlayed: true }),
+          db.collection("submissions").countDocuments({ testStatus: "passed" }),
+        ]);
+
+      // Add isRoverHolder to each submission
+      const submissionsWithRover = submissions.map((s) => ({
+        ...s,
+        isRoverHolder: isRoverHolder(s.ethAddress),
+      }));
 
       const totalPages = Math.ceil(totalSubmissions / limit);
 
       return ok(c, {
-        submissions,
+        submissions: submissionsWithRover,
         stats: {
           totalSubmissions,
-          uniqueEthAddresses: totalSubmissions, // Each eth is unique due to index
+          totalPlayed,
+          totalPassed,
+          totalFailed: totalPlayed - totalPassed,
         },
         pagination: {
           page,

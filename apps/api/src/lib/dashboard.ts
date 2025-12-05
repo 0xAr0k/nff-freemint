@@ -2,7 +2,7 @@ export const dashboardHtml = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Turing Test Applications</title>
+  <title>Turing Test Admin</title>
   <style>
     body { font-family: sans-serif; padding: 40px; background: #f8fafc; }
     .container { max-width: 1600px; margin: auto; }
@@ -33,6 +33,8 @@ export const dashboardHtml = `<!DOCTYPE html>
     .badge-no { background: #fee2e2; color: #991b1b; }
     .badge-pending { background: #fef3c7; color: #92400e; }
     .badge-perfect { background: #dbeafe; color: #1e40af; }
+    .badge-rover { background: #f3e8ff; color: #7c3aed; }
+    .rover-icon { display: inline-block; width: 16px; height: 16px; background: #7c3aed; border-radius: 50%; color: white; font-size: 10px; text-align: center; line-height: 16px; }
     .empty { text-align: center; padding: 40px; color: #666; }
     .alert { padding: 12px 16px; border-radius: 4px; margin-bottom: 15px; }
     .alert-error { background: #fee2e2; color: #991b1b; }
@@ -143,8 +145,8 @@ export const dashboardHtml = `<!DOCTYPE html>
         return;
       }
       var h = '<table><thead><tr>';
-      h += '<th>Time</th><th>Wallet</th><th>X Handle</th><th>Discord</th>';
-      h += '<th>Following X</th><th>Joined Discord</th><th>Game</th><th>Score</th>';
+      h += '<th>Time</th><th>Wallet</th><th>Rover</th><th>X Handle</th><th>Discord</th>';
+      h += '<th>Following X</th><th>Joined Discord</th><th>Game</th><th>Score</th><th>IP</th>';
       h += '</tr></thead><tbody>';
       
       for (var i = 0; i < subs.length; i++) {
@@ -162,16 +164,22 @@ export const dashboardHtml = `<!DOCTYPE html>
             gameStatus = '<span class="badge badge-no">FAIL</span>';
           }
         }
+
+        var roverBadge = s.isRoverHolder 
+          ? '<span class="badge badge-rover">🚀 Rover</span>' 
+          : '<span style="color:#ccc;">-</span>';
         
         h += '<tr>';
         h += '<td>' + escapeHtml(formatDate(s.timestamp)) + '</td>';
         h += '<td class="mono truncate" title="' + escapeHtml(s.ethAddress) + '">' + escapeHtml(s.ethAddress) + '</td>';
+        h += '<td>' + roverBadge + '</td>';
         h += '<td>' + escapeHtml(s.xHandleOriginal || s.xHandle || '-') + '</td>';
         h += '<td>' + escapeHtml(s.discordUsername || '-') + '</td>';
         h += '<td>' + (s.followingX ? '<span class="badge badge-yes">Yes</span>' : '<span class="badge badge-no">No</span>') + '</td>';
         h += '<td>' + (s.joinedDiscord ? '<span class="badge badge-yes">Yes</span>' : '<span class="badge badge-no">No</span>') + '</td>';
         h += '<td>' + gameStatus + '</td>';
         h += '<td>' + score + '</td>';
+        h += '<td class="mono">' + escapeHtml(s.ip || '-') + '</td>';
         h += '</tr>';
       }
       h += '</tbody></table>';
@@ -192,19 +200,21 @@ export const dashboardHtml = `<!DOCTYPE html>
       showAlert('Fetching all data...', 'success');
       fetchAllPages(1, []).then(function(allData) {
         if (!allData.length) { showAlert('No data', 'error'); return; }
-        var csv = 'timestamp,wallet,xHandle,discord,followingX,joinedDiscord,hasPlayed,testStatus,score\\n';
+        var csv = 'timestamp,wallet,isRoverHolder,xHandle,discord,followingX,joinedDiscord,hasPlayed,testStatus,score,ip\\n';
         for (var i = 0; i < allData.length; i++) {
           var s = allData[i];
           csv += [
             s.timestamp || '',
             s.ethAddress || '',
+            s.isRoverHolder ? 'true' : 'false',
             '"' + (s.xHandleOriginal || s.xHandle || '').replace(/"/g, '""') + '"',
             '"' + (s.discordUsername || '').replace(/"/g, '""') + '"',
             s.followingX ? 'true' : 'false',
             s.joinedDiscord ? 'true' : 'false',
             s.hasPlayed ? 'true' : 'false',
             s.testStatus || '',
-            s.correctAnswers || 0
+            s.correctAnswers || 0,
+            s.ip || ''
           ].join(',') + '\\n';
         }
         var blob = new Blob([csv], { type: 'text/csv' });
