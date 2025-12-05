@@ -17,10 +17,9 @@ const getClientIp = (c: any): string => {
   );
 };
 
-// 5 submissions per hour per IP
 const submitLimiter = rateLimiter({
   windowMs: 60 * 60 * 1000,
-  limit: 5,
+  limit: 10,
   keyGenerator: (c) => getClientIp(c),
   handler: (c) =>
     c.json({ error: "Too many submissions. Try again in 1 hour." }, 429),
@@ -50,35 +49,37 @@ app.post(
       const isRover = isRoverHolder(normalizedEth);
       const clientIp = getClientIp(c);
 
-      // Check duplicates
+      // Check if wallet already exists
       const existing = await db.collection("submissions").findOne({
-        $or: [
-          { ethAddress: normalizedEth },
-          { xHandle: normalizedXHandle },
-          { discordUsername: discordUsername },
-        ],
+        ethAddress: normalizedEth,
       });
 
+      // If wallet exists, return existing data (for redirect to results)
       if (existing) {
-        if (existing.ethAddress === normalizedEth) {
-          return badRequest(c, {
-            error: "This wallet has already been registered",
-          });
+        let status = null;
+        if (existing.testStatus === "passed") {
+          status = existing.correctAnswers === 3 ? "PERFECT" : "PASS";
+        } else if (existing.testStatus === "failed") {
+          status = "FAIL";
         }
-        if (existing.xHandle === normalizedXHandle) {
-          return badRequest(c, {
-            error: "This X handle has already been used",
-          });
-        }
-        if (existing.discordUsername === discordUsername) {
-          return badRequest(c, {
-            error: "This Discord username has already been used",
-          });
-        }
+
+        return ok(c, {
+          success: true,
+          alreadyRegistered: true,
+          message: "Wallet already registered",
+          isRoverHolder: isRover,
+          hasPlayed: existing.hasPlayed || false,
+          testStatus: existing.testStatus,
+          status,
+          correctAnswers: existing.correctAnswers || 0,
+          totalRounds: existing.totalRounds || 0,
+          roundResults: existing.roundResults || [],
+        });
       }
 
       const timestamp = new Date().toISOString();
 
+      // Insert new submission - only wallet is unique
       await db.collection("submissions").insertOne({
         ethAddress: normalizedEth,
         xHandle: normalizedXHandle,
@@ -102,11 +103,19 @@ app.post(
 
       return ok(c, {
         success: true,
+        alreadyRegistered: false,
         message: "Wallet registered successfully",
         isRoverHolder: isRover,
+        hasPlayed: false,
+        testStatus: null,
+        status: null,
+        correctAnswers: 0,
+        totalRounds: 0,
+        roundResults: [],
       });
     } catch (error: any) {
       if (error.code === 11000) {
+        // Duplicate key - shouldn't happen now but handle gracefully
         return badRequest(c, { error: "Already registered" });
       }
       console.error("Submit error:", error);
