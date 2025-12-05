@@ -62,7 +62,7 @@ function Results({ walletAddress, results, onBackToStart, onRetakeTest }) {
           ? `I just FAILED (${actualCorrect}/${actualTotal}) the Rovers Reverse Turing Test. 🚫`
           : "I took the Rovers Reverse Turing Test."
   );
-  const twitterShareUrl = `https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent(typeof window !== "undefined" ? "https://therovers.xyz" : "")}`;
+  const twitterShareUrl = `https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent("https://therovers.xyz")}`;
 
   const handleShareResults = () => {
     window.open(twitterShareUrl, "_blank", "width=550,height=420");
