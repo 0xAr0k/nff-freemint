@@ -16,13 +16,16 @@ app
       const db = c.get("db");
       const { address } = c.req.valid("query");
       const isEligible = isRoverHolder(address);
+
       if (!isEligible)
         return notFound(c, {
           error: "Not eligible, cannot find user on the list",
         });
+
       const alreadySubmitted = await db
         .collection("gift_submissions")
-        .findOne({ address });
+        .findOne({ giverAddress: address.toLowerCase() });
+
       if (alreadySubmitted) return forbidden(c, { error: "Already submitted" });
 
       return ok(c, {
@@ -42,7 +45,7 @@ app
       const isEligible = isRoverHolder(giverAddress);
       if (!isEligible) return forbidden(c, { error: "Not eligible" });
 
-      const alreadySubmitted = await db.collection("gifts").findOne({
+      const alreadySubmitted = await db.collection("").findOne({
         giverAddress,
         recipientAddress,
       });
