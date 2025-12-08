@@ -9,22 +9,28 @@ import { apiKeyMiddleware } from "../middlewares/api-key";
 const app = new Hono();
 
 app
-  .get("/", validator("query", schema(addressQuerySchema)), async (c) => {
-    const db = c.get("db");
-    const { address } = c.req.valid("query");
-    const isEligible = isRoverHolder(address);
-    if (!isEligible)
-      return notFound(c, {
-        error: "Not eligible, cannot find user on the list",
-      });
-    const alreadySubmitted = await db.collection("gifts").findOne({ address });
-    if (alreadySubmitted) return forbidden(c, { error: "Already submitted" });
+  .get(
+    "/eligible",
+    validator("query", schema(addressQuerySchema)),
+    async (c) => {
+      const db = c.get("db");
+      const { address } = c.req.valid("query");
+      const isEligible = isRoverHolder(address);
+      if (!isEligible)
+        return notFound(c, {
+          error: "Not eligible, cannot find user on the list",
+        });
+      const alreadySubmitted = await db
+        .collection("gifts")
+        .findOne({ address });
+      if (alreadySubmitted) return forbidden(c, { error: "Already submitted" });
 
-    return ok(c, {
-      success: true,
-      isEligible: true,
-    });
-  })
+      return ok(c, {
+        success: true,
+        isEligible: true,
+      });
+    }
+  )
   .post(
     "/submit",
     apiKeyMiddleware(),

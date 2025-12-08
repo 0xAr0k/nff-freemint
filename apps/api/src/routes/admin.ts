@@ -133,7 +133,7 @@ app
         },
       });
     } catch (error) {
-      logger.error("Gift records error:", error);
+      logger.error(`Gift records error:, ${error}`);
       return unexpectedError(c);
     }
   })
