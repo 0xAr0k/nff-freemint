@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Context, Hono } from "hono";
 import { validator } from "hono/validator";
 import { rateLimiter } from "hono-rate-limiter";
 import { ObjectId } from "mongodb";
@@ -18,7 +18,7 @@ const PASS_THRESHOLD = 2;
 
 const app = new Hono();
 
-const getClientIp = (c: any): string => {
+const getClientIp = (c: Context): string => {
   return (
     c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
     c.req.header("x-real-ip") ||

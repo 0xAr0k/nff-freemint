@@ -16,7 +16,7 @@ type FailedResponse<TError extends string> = {
 
 export const badRequest = <TContext extends Context, TError extends string>(
   c: TContext,
-  err?: Partial<FailedResponse<TError>>,
+  err?: Partial<FailedResponse<TError>>
 ) => {
   const { error = BAD_REQUEST_ERROR as TError, message } = err ?? {};
 
@@ -25,7 +25,7 @@ export const badRequest = <TContext extends Context, TError extends string>(
 
 export const unauthorized = <TContext extends Context, TError extends string>(
   c: TContext,
-  err?: Partial<FailedResponse<TError>>,
+  err?: Partial<FailedResponse<TError>>
 ) => {
   const { error = UNAUTHORIZED_ERROR as TError, message } = err ?? {};
 
@@ -34,7 +34,7 @@ export const unauthorized = <TContext extends Context, TError extends string>(
 
 export const forbidden = <TContext extends Context, TError extends string>(
   c: TContext,
-  err?: Partial<FailedResponse<TError>>,
+  err?: Partial<FailedResponse<TError>>
 ) => {
   const { error = FORBIDDEN_ERROR as TError, message } = err ?? {};
 
@@ -43,7 +43,7 @@ export const forbidden = <TContext extends Context, TError extends string>(
 
 export const notFound = <TContext extends Context, TError extends string>(
   c: TContext,
-  err?: Partial<FailedResponse<TError>>,
+  err?: Partial<FailedResponse<TError>>
 ) => {
   const { error = NOT_FOUND_ERROR as TError, message } = err ?? {};
 
@@ -55,7 +55,7 @@ export const methodNotAllowed = <
   TError extends string,
 >(
   c: TContext,
-  err?: Partial<FailedResponse<TError>>,
+  err?: Partial<FailedResponse<TError>>
 ) => {
   const { error = METHOD_NOT_ALLOWED_ERROR as TError, message } = err ?? {};
 
@@ -65,15 +65,15 @@ export const methodNotAllowed = <
 export const unexpectedError = <TContext extends Context>(c: TContext) =>
   c.json<FailedResponse<typeof INTERNAL_SERVER_ERROR>>(
     { error: INTERNAL_SERVER_ERROR, message: "Unexpected error occured" },
-    500,
+    500
   );
 
 export const ok = <TContext extends Context, TPayload>(
   c: TContext,
-  payload?: TPayload,
+  payload?: TPayload
 ) => c.json(payload ?? undefined, 200);
 
 export const created = <TContext extends Context, TPayload extends JSONValue>(
   c: TContext,
-  payload?: TPayload,
+  payload?: TPayload
 ) => c.json(payload ?? undefined, 201);

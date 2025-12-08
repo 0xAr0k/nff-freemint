@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Context, Hono } from "hono";
 import { trimTrailingSlash } from "hono/trailing-slash";
 import { rateLimiter } from "hono-rate-limiter";
 import { Db } from "mongodb";
@@ -7,6 +7,7 @@ import { connectDB } from "./lib/mongo";
 import adminRoute from "./routes/admin";
 import formRoute from "./routes/form";
 import gameRoute from "./routes/game";
+import giftRoute from "./routes/gift";
 import { ok, notFound, badRequest, unexpectedError } from "./utils/response";
 import { HTTPResponseError } from "hono/types";
 import { logger } from "./logger";
@@ -31,7 +32,7 @@ const allowedOrigins = [
   env.FRONTEND_URL?.replace(/\/$/, ""),
 ].filter(Boolean);
 
-const getClientIp = (c: any): string => {
+const getClientIp = (c: Context): string => {
   return (
     c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
     c.req.header("x-real-ip") ||
@@ -88,6 +89,7 @@ app
   .route("/admin", adminRoute)
   .route("/form", formRoute)
   .route("/game", gameRoute)
+  .route("/gift", giftRoute)
   .get("*", (c) =>
     notFound(c, { message: `Path ${c.req.method} ${c.req.path} not found` })
   )

@@ -1,5 +1,6 @@
 import { MongoClient, Db } from "mongodb";
 import { env } from "../env";
+import { logger } from "../logger";
 
 let db: Db;
 
@@ -29,7 +30,14 @@ export async function connectDB(): Promise<Db> {
   await db.collection("answers").createIndex({ timesShown: 1 });
   await db.collection("answers").createIndex({ isSeeded: 1 });
 
-  console.log("MongoDB connected to nff-turing");
+  // Gift submissions indexes
+  await db
+    .collection("gift_submissions")
+    .createIndex({ giverAddress: 1 }, { unique: true });
+  await db.collection("gift_submissions").createIndex({ recipientAddress: 1 });
+  await db.collection("gift_submissions").createIndex({ timestamp: -1 });
+
+  logger.info("MongoDB connected to nff-turing");
   return db;
 }
 

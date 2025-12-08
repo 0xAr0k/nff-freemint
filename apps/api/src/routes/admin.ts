@@ -6,6 +6,7 @@ import { ok, unexpectedError } from "../utils/response";
 import { dashboardHtml, loginPageHtml } from "../lib/dashboard";
 import { getCookie, setCookie } from "hono/cookie";
 import { isRoverHolder } from "../lib/rover-holder";
+import { logger } from "../logger";
 
 const app = new Hono();
 
@@ -19,7 +20,7 @@ app
   })
   .post("/login", async (c) => {
     const body = await c.req.parseBody();
-    const password = (body as any).password;
+    const password = body.password;
     const adminSecret = c.get("env").ADMIN_SECRET;
 
     if (!password) return c.html(loginPageHtml("Password required"));
@@ -94,7 +95,45 @@ app
         },
       });
     } catch (error) {
-      console.error("Records error:", error);
+      logger.error(`Records error: ${error}`);
+      return unexpectedError(c);
+    }
+  })
+  .get("/gift-records", adminMiddleware(), async (c) => {
+    try {
+      const db = c.get("db");
+
+      const page = parseInt(c.req.query("page") || "1");
+      const limit = parseInt(c.req.query("limit") || "50");
+      const skip = (page - 1) * limit;
+
+      const [submissions, totalSubmissions] = await Promise.all([
+        db
+          .collection("gift_submissions")
+          .find({})
+          .sort({ timestamp: -1 })
+          .skip(skip)
+          .limit(limit)
+          .toArray(),
+        db.collection("gift_submissions").countDocuments(),
+      ]);
+
+      const totalPages = Math.ceil(totalSubmissions / limit);
+
+      return ok(c, {
+        submissions,
+        stats: {
+          totalSubmissions,
+        },
+        pagination: {
+          page,
+          limit,
+          totalPages,
+          hasMore: page < totalPages,
+        },
+      });
+    } catch (error) {
+      logger.error("Gift records error:", error);
       return unexpectedError(c);
     }
   })

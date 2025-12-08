@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Context, Hono } from "hono";
 import { validator } from "hono/validator";
 import { rateLimiter } from "hono-rate-limiter";
 import { schema } from "../utils/validation";
@@ -9,7 +9,7 @@ import { isRoverHolder } from "../lib/rover-holder";
 
 const app = new Hono();
 
-const getClientIp = (c: any): string => {
+const getClientIp = (c: Context): string => {
   return (
     c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
     c.req.header("x-real-ip") ||
@@ -113,12 +113,10 @@ app.post(
         totalRounds: 0,
         roundResults: [],
       });
-    } catch (error: any) {
-      if (error.code === 11000) {
-        // Duplicate key - shouldn't happen now but handle gracefully
+    } catch (error) {
+      if (error instanceof Error && error.message === "duplicate key") {
         return badRequest(c, { error: "Already registered" });
       }
-      console.error("Submit error:", error);
       return unexpectedError(c);
     }
   }

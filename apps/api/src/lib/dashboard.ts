@@ -22,6 +22,11 @@ export const dashboardHtml = `<!DOCTYPE html>
     .btn-black:hover { background: #333; }
     .btn-black:disabled { background: #ccc; cursor: not-allowed; }
     .btn-group { display: flex; gap: 10px; align-items: center; }
+    .tabs { display: flex; gap: 0; margin-bottom: 20px; }
+    .tab { padding: 12px 24px; background: #e5e7eb; border: none; cursor: pointer; font-size: 0.9rem; }
+    .tab:first-child { border-radius: 8px 0 0 8px; }
+    .tab:last-child { border-radius: 0 8px 8px 0; }
+    .tab.active { background: #000; color: #fff; }
     table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     th { text-align: left; padding: 10px; border-bottom: 2px solid #e5e7eb; font-weight: 600; white-space: nowrap; }
     td { padding: 10px; border-bottom: 1px solid #e5e7eb; }
@@ -34,13 +39,14 @@ export const dashboardHtml = `<!DOCTYPE html>
     .badge-pending { background: #fef3c7; color: #92400e; }
     .badge-perfect { background: #dbeafe; color: #1e40af; }
     .badge-rover { background: #f3e8ff; color: #7c3aed; }
-    .rover-icon { display: inline-block; width: 16px; height: 16px; background: #7c3aed; border-radius: 50%; color: white; font-size: 10px; text-align: center; line-height: 16px; }
+    .badge-gift { background: #fce7f3; color: #be185d; }
     .empty { text-align: center; padding: 40px; color: #666; }
     .alert { padding: 12px 16px; border-radius: 4px; margin-bottom: 15px; }
     .alert-error { background: #fee2e2; color: #991b1b; }
     .alert-success { background: #dcfce7; color: #166534; }
     .last-updated { font-size: 0.8rem; color: #999; }
     .pagination { display: flex; gap: 10px; align-items: center; justify-content: center; margin-top: 20px; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -52,49 +58,100 @@ export const dashboardHtml = `<!DOCTYPE html>
 
     <div id="alertContainer"></div>
 
-    <div class="stats">
-      <div class="stat">
-        <div class="stat-number" id="statSubmissions">-</div>
-        <div class="stat-label">Total Registered</div>
-      </div>
-      <div class="stat">
-        <div class="stat-number" id="statPlayed">-</div>
-        <div class="stat-label">Played</div>
-      </div>
-      <div class="stat">
-        <div class="stat-number" id="statPassed">-</div>
-        <div class="stat-label">Passed</div>
-      </div>
-      <div class="stat">
-        <div class="stat-number" id="statFailed">-</div>
-        <div class="stat-label">Failed</div>
-      </div>
-      <div class="stat">
-        <div class="stat-number" id="statPending">-</div>
-        <div class="stat-label">Not Played</div>
-      </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('submissions')">Form Submissions</button>
+      <button class="tab" onclick="switchTab('gifts')">Gift Submissions</button>
     </div>
 
-    <div class="card">
-      <div class="card-header">
-        <h2>Records</h2>
-        <div class="btn-group">
-          <span class="last-updated" id="lastUpdated"></span>
-          <button class="btn btn-black" onclick="loadRecords(1)">Refresh</button>
-          <button class="btn btn-black" onclick="exportCSV()">Export CSV</button>
+    <!-- Form Submissions Tab -->
+    <div id="submissionsTab">
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-number" id="statSubmissions">-</div>
+          <div class="stat-label">Total Registered</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number" id="statPlayed">-</div>
+          <div class="stat-label">Played</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number" id="statPassed">-</div>
+          <div class="stat-label">Passed</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number" id="statFailed">-</div>
+          <div class="stat-label">Failed</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number" id="statPending">-</div>
+          <div class="stat-label">Not Played</div>
         </div>
       </div>
 
-      <div id="submissionsContainer"><div class="empty">Loading...</div></div>
-      <div class="pagination" id="paginationContainer"></div>
+      <div class="card">
+        <div class="card-header">
+          <h2>Form Records</h2>
+          <div class="btn-group">
+            <span class="last-updated" id="lastUpdated"></span>
+            <button class="btn btn-black" onclick="loadRecords(1)">Refresh</button>
+            <button class="btn btn-black" onclick="exportCSV()">Export CSV</button>
+          </div>
+        </div>
+
+        <div id="submissionsContainer"><div class="empty">Loading...</div></div>
+        <div class="pagination" id="paginationContainer"></div>
+      </div>
+    </div>
+
+    <!-- Gift Submissions Tab -->
+    <div id="giftsTab" class="hidden">
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-number" id="statGiftTotal">-</div>
+          <div class="stat-label">Total Gifts</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Gift Records</h2>
+          <div class="btn-group">
+            <span class="last-updated" id="giftLastUpdated"></span>
+            <button class="btn btn-black" onclick="loadGiftRecords(1)">Refresh</button>
+            <button class="btn btn-black" onclick="exportGiftCSV()">Export CSV</button>
+          </div>
+        </div>
+
+        <div id="giftContainer"><div class="empty">Loading...</div></div>
+        <div class="pagination" id="giftPaginationContainer"></div>
+      </div>
     </div>
   </div>
 
   <script>
     var currentData = null;
+    var currentGiftData = null;
     var currentPage = 1;
+    var currentGiftPage = 1;
+    var activeTab = 'submissions';
     
     loadRecords(1);
+
+    function switchTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+      
+      if (tab === 'submissions') {
+        document.querySelectorAll('.tab')[0].classList.add('active');
+        document.getElementById('submissionsTab').classList.remove('hidden');
+        document.getElementById('giftsTab').classList.add('hidden');
+      } else {
+        document.querySelectorAll('.tab')[1].classList.add('active');
+        document.getElementById('submissionsTab').classList.add('hidden');
+        document.getElementById('giftsTab').classList.remove('hidden');
+        if (!currentGiftData) loadGiftRecords(1);
+      }
+    }
 
     function escapeHtml(str) {
       if (str === null || str === undefined) return '';
@@ -114,6 +171,7 @@ export const dashboardHtml = `<!DOCTYPE html>
       setTimeout(function() { c.innerHTML = ''; }, 5000);
     }
 
+    // Form Submissions
     function loadRecords(page) {
       currentPage = page;
       fetch('/admin/records?page=' + page + '&limit=50')
@@ -198,7 +256,7 @@ export const dashboardHtml = `<!DOCTYPE html>
 
     function exportCSV() {
       showAlert('Fetching all data...', 'success');
-      fetchAllPages(1, []).then(function(allData) {
+      fetchAllPages('/admin/records', 1, []).then(function(allData) {
         if (!allData.length) { showAlert('No data', 'error'); return; }
         var csv = 'timestamp,wallet,isRoverHolder,xHandle,discord,followingX,joinedDiscord,hasPlayed,testStatus,score,ip\\n';
         for (var i = 0; i < allData.length; i++) {
@@ -220,19 +278,96 @@ export const dashboardHtml = `<!DOCTYPE html>
         var blob = new Blob([csv], { type: 'text/csv' });
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'turing-' + new Date().toISOString().slice(0,10) + '.csv';
+        a.download = 'turing-submissions-' + new Date().toISOString().slice(0,10) + '.csv';
         a.click();
         showAlert('Exported ' + allData.length + ' rows', 'success');
       });
     }
 
-    function fetchAllPages(page, accumulated) {
-      return fetch('/admin/records?page=' + page + '&limit=100')
+    // Gift Submissions
+    function loadGiftRecords(page) {
+      currentGiftPage = page;
+      fetch('/admin/gift-records?page=' + page + '&limit=50')
+        .then(function(r) { if (!r.ok) throw new Error('Failed'); return r.json(); })
+        .then(function(data) {
+          currentGiftData = data.data || data;
+          updateGiftStats();
+          renderGiftSubmissions(currentGiftData.submissions || []);
+          renderGiftPagination(currentGiftData.pagination);
+          document.getElementById('giftLastUpdated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+        })
+        .catch(function(e) { showAlert(e.message, 'error'); });
+    }
+
+    function updateGiftStats() {
+      if (!currentGiftData || !currentGiftData.stats) return;
+      document.getElementById('statGiftTotal').textContent = currentGiftData.stats.totalSubmissions || 0;
+    }
+
+    function renderGiftSubmissions(subs) {
+      var c = document.getElementById('giftContainer');
+      if (!subs || !subs.length) {
+        c.innerHTML = '<div class="empty">No gift submissions yet</div>';
+        return;
+      }
+      var h = '<table><thead><tr>';
+      h += '<th>Time</th><th>Giver Wallet</th><th>Recipient Wallet</th><th>Recipient X</th>';
+      h += '</tr></thead><tbody>';
+      
+      for (var i = 0; i < subs.length; i++) {
+        var s = subs[i];
+        h += '<tr>';
+        h += '<td>' + escapeHtml(formatDate(s.timestamp)) + '</td>';
+        h += '<td class="mono truncate" title="' + escapeHtml(s.giverAddress) + '">' + escapeHtml(s.giverAddress) + '</td>';
+        h += '<td class="mono truncate" title="' + escapeHtml(s.recipientAddress) + '">' + escapeHtml(s.recipientAddress) + '</td>';
+        h += '<td>' + escapeHtml(s.recipientXUsernameOriginal || s.recipientXUsername || '-') + '</td>';
+        h += '</tr>';
+      }
+      h += '</tbody></table>';
+      c.innerHTML = h;
+    }
+
+    function renderGiftPagination(pagination) {
+      var c = document.getElementById('giftPaginationContainer');
+      if (!pagination) { c.innerHTML = ''; return; }
+      var h = '';
+      h += '<button class="btn btn-black" onclick="loadGiftRecords(' + (pagination.page - 1) + ')" ' + (pagination.page <= 1 ? 'disabled' : '') + '>← Prev</button>';
+      h += '<span>Page ' + pagination.page + ' of ' + pagination.totalPages + '</span>';
+      h += '<button class="btn btn-black" onclick="loadGiftRecords(' + (pagination.page + 1) + ')" ' + (!pagination.hasMore ? 'disabled' : '') + '>Next →</button>';
+      c.innerHTML = h;
+    }
+
+    function exportGiftCSV() {
+      showAlert('Fetching all gift data...', 'success');
+      fetchAllPages('/admin/gift-records', 1, []).then(function(allData) {
+        if (!allData.length) { showAlert('No data', 'error'); return; }
+        var csv = 'timestamp,giverAddress,recipientAddress,recipientXUsername\\n';
+        for (var i = 0; i < allData.length; i++) {
+          var s = allData[i];
+          csv += [
+            s.timestamp || '',
+            s.giverAddress || '',
+            s.recipientAddress || '',
+            '"' + (s.recipientXUsernameOriginal || s.recipientXUsername || '').replace(/"/g, '""') + '"'
+          ].join(',') + '\\n';
+        }
+        var blob = new Blob([csv], { type: 'text/csv' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'gift-submissions-' + new Date().toISOString().slice(0,10) + '.csv';
+        a.click();
+        showAlert('Exported ' + allData.length + ' rows', 'success');
+      });
+    }
+
+    // Shared fetch helper
+    function fetchAllPages(endpoint, page, accumulated) {
+      return fetch(endpoint + '?page=' + page + '&limit=100')
         .then(function(r) { return r.json(); })
         .then(function(data) {
           var d = data.data || data;
           var all = accumulated.concat(d.submissions || []);
-          if (d.pagination && d.pagination.hasMore) return fetchAllPages(page + 1, all);
+          if (d.pagination && d.pagination.hasMore) return fetchAllPages(endpoint, page + 1, all);
           return all;
         });
     }
