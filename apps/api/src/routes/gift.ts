@@ -21,7 +21,7 @@ app
           error: "Not eligible, cannot find user on the list",
         });
       const alreadySubmitted = await db
-        .collection("gift-submissions")
+        .collection("gift_submissions")
         .findOne({ address });
       if (alreadySubmitted) return forbidden(c, { error: "Already submitted" });
 
@@ -48,7 +48,7 @@ app
       });
       if (alreadySubmitted) return forbidden(c, { error: "Already submitted" });
 
-      await db.collection("gift-submissions").insertOne({
+      await db.collection("gift_submissions").insertOne({
         giverAddress,
         recipientAddress,
         recipientXUsername,
