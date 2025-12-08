@@ -45,7 +45,7 @@ app
       const isEligible = isRoverHolder(giverAddress);
       if (!isEligible) return forbidden(c, { error: "Not eligible" });
 
-      const alreadySubmitted = await db.collection("").findOne({
+      const alreadySubmitted = await db.collection("gift_submissions").findOne({
         giverAddress: giverAddress.toLowerCase(),
       });
       if (alreadySubmitted) return forbidden(c, { error: "Already submitted" });
