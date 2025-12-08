@@ -46,14 +46,13 @@ app
       if (!isEligible) return forbidden(c, { error: "Not eligible" });
 
       const alreadySubmitted = await db.collection("").findOne({
-        giverAddress,
-        recipientAddress,
+        giverAddress: giverAddress.toLowerCase(),
       });
       if (alreadySubmitted) return forbidden(c, { error: "Already submitted" });
 
       await db.collection("gift_submissions").insertOne({
-        giverAddress,
-        recipientAddress,
+        giverAddress: giverAddress.toLowerCase(),
+        recipientAddress: recipientAddress.toLowerCase(),
         recipientXUsername,
         createdAt: new Date(),
       });
