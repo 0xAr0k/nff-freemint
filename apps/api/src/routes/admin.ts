@@ -137,6 +137,50 @@ app
       return unexpectedError(c);
     }
   })
+  .get("/answer-records", adminMiddleware(), async (c) => {
+    try {
+      const db = c.get("db");
+
+      const page = parseInt(c.req.query("page") || "1");
+      const limit = parseInt(c.req.query("limit") || "50");
+      const skip = (page - 1) * limit;
+
+      const [answers, totalAnswers] = await Promise.all([
+        db
+          .collection("answers")
+          .find({})
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .toArray(),
+        db.collection("answers").countDocuments(),
+      ]);
+
+      // Add isRoverHolder to each answer
+      const answersWithRover = answers.map((a) => ({
+        ...a,
+        isRoverHolder: isRoverHolder(a.ethAddress),
+      }));
+
+      const totalPages = Math.ceil(totalAnswers / limit);
+
+      return ok(c, {
+        answers: answersWithRover,
+        stats: {
+          totalAnswers,
+        },
+        pagination: {
+          page,
+          limit,
+          totalPages,
+          hasMore: page < totalPages,
+        },
+      });
+    } catch (error) {
+      logger.error(`Answer records error: ${error}`);
+      return unexpectedError(c);
+    }
+  })
   .get("/dashboard", adminMiddleware(), async (c) => {
     return c.html(dashboardHtml);
   });

@@ -24,8 +24,8 @@ export const dashboardHtml = `<!DOCTYPE html>
     .btn-group { display: flex; gap: 10px; align-items: center; }
     .tabs { display: flex; gap: 0; margin-bottom: 20px; }
     .tab { padding: 12px 24px; background: #e5e7eb; border: none; cursor: pointer; font-size: 0.9rem; }
-    .tab:first-child { border-radius: 8px 0 0 8px; }
-    .tab:last-child { border-radius: 0 8px 8px 0; }
+    .tab:first-child { border-radius: 8px 0 0 0; }
+    .tab:last-child { border-radius: 0 8px 0 0; }
     .tab.active { background: #000; color: #fff; }
     table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     th { text-align: left; padding: 10px; border-bottom: 2px solid #e5e7eb; font-weight: 600; white-space: nowrap; }
@@ -33,6 +33,7 @@ export const dashboardHtml = `<!DOCTYPE html>
     tr:hover { background: #f8fafc; }
     .mono { font-family: monospace; font-size: 0.8rem; }
     .truncate { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .answer-text { max-width: 400px; white-space: normal; line-height: 1.4; }
     .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500; }
     .badge-yes { background: #dcfce7; color: #166534; }
     .badge-no { background: #fee2e2; color: #991b1b; }
@@ -61,6 +62,7 @@ export const dashboardHtml = `<!DOCTYPE html>
     <div class="tabs">
       <button class="tab active" onclick="switchTab('submissions')">Form Submissions</button>
       <button class="tab" onclick="switchTab('gifts')">Gift Submissions</button>
+      <button class="tab" onclick="switchTab('answers')">Answers Pool</button>
     </div>
 
     <!-- Form Submissions Tab -->
@@ -126,13 +128,39 @@ export const dashboardHtml = `<!DOCTYPE html>
         <div class="pagination" id="giftPaginationContainer"></div>
       </div>
     </div>
+
+    <!-- Answers Pool Tab -->
+    <div id="answersTab" class="hidden">
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-number" id="statAnswersTotal">-</div>
+          <div class="stat-label">Total Answers</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Answer Pool Records</h2>
+          <div class="btn-group">
+            <span class="last-updated" id="answersLastUpdated"></span>
+            <button class="btn btn-black" onclick="loadAnswerRecords(1)">Refresh</button>
+            <button class="btn btn-black" onclick="exportAnswersCSV()">Export CSV</button>
+          </div>
+        </div>
+
+        <div id="answersContainer"><div class="empty">Loading...</div></div>
+        <div class="pagination" id="answersPaginationContainer"></div>
+      </div>
+    </div>
   </div>
 
   <script>
     var currentData = null;
     var currentGiftData = null;
+    var currentAnswersData = null;
     var currentPage = 1;
     var currentGiftPage = 1;
+    var currentAnswersPage = 1;
     var activeTab = 'submissions';
     
     loadRecords(1);
@@ -145,11 +173,19 @@ export const dashboardHtml = `<!DOCTYPE html>
         document.querySelectorAll('.tab')[0].classList.add('active');
         document.getElementById('submissionsTab').classList.remove('hidden');
         document.getElementById('giftsTab').classList.add('hidden');
-      } else {
+        document.getElementById('answersTab').classList.add('hidden');
+      } else if (tab === 'gifts') {
         document.querySelectorAll('.tab')[1].classList.add('active');
         document.getElementById('submissionsTab').classList.add('hidden');
         document.getElementById('giftsTab').classList.remove('hidden');
+        document.getElementById('answersTab').classList.add('hidden');
         if (!currentGiftData) loadGiftRecords(1);
+      } else if (tab === 'answers') {
+        document.querySelectorAll('.tab')[2].classList.add('active');
+        document.getElementById('submissionsTab').classList.add('hidden');
+        document.getElementById('giftsTab').classList.add('hidden');
+        document.getElementById('answersTab').classList.remove('hidden');
+        if (!currentAnswersData) loadAnswerRecords(1);
       }
     }
 
@@ -360,13 +396,97 @@ export const dashboardHtml = `<!DOCTYPE html>
       });
     }
 
+    // Answers Pool
+    function loadAnswerRecords(page) {
+      currentAnswersPage = page;
+      fetch('/admin/answer-records?page=' + page + '&limit=50')
+        .then(function(r) { if (!r.ok) throw new Error('Failed'); return r.json(); })
+        .then(function(data) {
+          currentAnswersData = data.data || data;
+          updateAnswersStats();
+          renderAnswers(currentAnswersData.answers || []);
+          renderAnswersPagination(currentAnswersData.pagination);
+          document.getElementById('answersLastUpdated').textContent = 'Updated: ' + new Date().toLocaleTimeString();
+        })
+        .catch(function(e) { showAlert(e.message, 'error'); });
+    }
+
+    function updateAnswersStats() {
+      if (!currentAnswersData || !currentAnswersData.stats) return;
+      document.getElementById('statAnswersTotal').textContent = currentAnswersData.stats.totalAnswers || 0;
+    }
+
+    function renderAnswers(answers) {
+      var c = document.getElementById('answersContainer');
+      if (!answers || !answers.length) {
+        c.innerHTML = '<div class="empty">No answers yet</div>';
+        return;
+      }
+      var h = '<table><thead><tr>';
+      h += '<th>Time</th><th>Wallet</th><th>Rover</th><th>Answer</th><th>Times Shown</th><th>Trick Points</th>';
+      h += '</tr></thead><tbody>';
+      
+      for (var i = 0; i < answers.length; i++) {
+        var a = answers[i];
+        var roverBadge = a.isRoverHolder 
+          ? '<span class="badge badge-rover">🚀</span>' 
+          : '<span style="color:#ccc;">-</span>';
+        
+        h += '<tr>';
+        h += '<td>' + escapeHtml(formatDate(a.createdAt)) + '</td>';
+        h += '<td class="mono truncate" title="' + escapeHtml(a.ethAddress) + '">' + escapeHtml(a.ethAddress) + '</td>';
+        h += '<td>' + roverBadge + '</td>';
+        h += '<td class="answer-text">' + escapeHtml(a.answer || '') + '</td>';
+        h += '<td>' + (a.timesShown || 0) + '</td>';
+        h += '<td>' + (a.trickPoints || 0) + '</td>';
+        h += '</tr>';
+      }
+      h += '</tbody></table>';
+      c.innerHTML = h;
+    }
+
+    function renderAnswersPagination(pagination) {
+      var c = document.getElementById('answersPaginationContainer');
+      if (!pagination) { c.innerHTML = ''; return; }
+      var h = '';
+      h += '<button class="btn btn-black" onclick="loadAnswerRecords(' + (pagination.page - 1) + ')" ' + (pagination.page <= 1 ? 'disabled' : '') + '>← Prev</button>';
+      h += '<span>Page ' + pagination.page + ' of ' + pagination.totalPages + '</span>';
+      h += '<button class="btn btn-black" onclick="loadAnswerRecords(' + (pagination.page + 1) + ')" ' + (!pagination.hasMore ? 'disabled' : '') + '>Next →</button>';
+      c.innerHTML = h;
+    }
+
+    function exportAnswersCSV() {
+      showAlert('Fetching all answer data...', 'success');
+      fetchAllPages('/admin/answer-records', 1, []).then(function(allData) {
+        if (!allData.length) { showAlert('No data', 'error'); return; }
+        var csv = 'timestamp,wallet,isRoverHolder,answer,timesShown,trickPoints\\n';
+        for (var i = 0; i < allData.length; i++) {
+          var a = allData[i];
+          csv += [
+            a.createdAt || '',
+            a.ethAddress || '',
+            a.isRoverHolder ? 'true' : 'false',
+            '"' + (a.answer || '').replace(/"/g, '""') + '"',
+            a.timesShown || 0,
+            a.trickPoints || 0
+          ].join(',') + '\\n';
+        }
+        var blob = new Blob([csv], { type: 'text/csv' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'answer-pool-' + new Date().toISOString().slice(0,10) + '.csv';
+        a.click();
+        showAlert('Exported ' + allData.length + ' rows', 'success');
+      });
+    }
+
     // Shared fetch helper
     function fetchAllPages(endpoint, page, accumulated) {
       return fetch(endpoint + '?page=' + page + '&limit=100')
         .then(function(r) { return r.json(); })
         .then(function(data) {
           var d = data.data || data;
-          var all = accumulated.concat(d.submissions || []);
+          var all = accumulated.concat(d.submissions || d.answers || []);
           if (d.pagination && d.pagination.hasMore) return fetchAllPages(endpoint, page + 1, all);
           return all;
         });
