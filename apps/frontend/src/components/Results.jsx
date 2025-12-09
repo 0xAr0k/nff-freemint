@@ -1,12 +1,12 @@
-import React from "react";
+import react from "react";
 
-function Results({ walletAddress, results, onBackToStart, onRetakeTest }) {
+function results({ walletaddress, results, onbacktostart, onretaketest }) {
   if (!results) {
     return (
       <div>
-        <div className="loading">Loading results...</div>
-        <button onClick={onBackToStart} style={{ marginTop: "20px" }}>
-          Back to Start
+        <div classname="loading">loading results...</div>
+        <button onclick={onbacktostart} style={{ margintop: "20px" }}>
+          back to start
         </button>
       </div>
     );
@@ -14,265 +14,265 @@ function Results({ walletAddress, results, onBackToStart, onRetakeTest }) {
 
   const {
     status,
-    correctAnswers = 0,
-    totalRounds = 0,
-    testStatus,
-    roundResults = [],
-    isRoverHolder = false,
+    correctanswers = 0,
+    totalrounds = 0,
+    teststatus,
+    roundresults = [],
+    isroverholder = false,
   } = results;
 
-  // Determine status display
-  let statusDisplay = "";
-  let statusColor = "#888";
-  let statusMessage = "";
+  // determine status display
+  let statusdisplay = "";
+  let statuscolor = "#888";
+  let statusmessage = "";
 
-  if (status === "PERFECT") {
-    statusDisplay = "PERFECT";
-    statusColor = "#00ff41";
-    statusMessage =
-      "Perfect score! Humanity Confirmed. Your authenticity and understanding of human nature has been recorded.";
-  } else if (status === "PASS") {
-    statusDisplay = "PASS";
-    statusColor = "#00ff88";
-    statusMessage =
-      "Humanity Confirmed. Your authenticity and understanding of human nature has been recorded.";
-  } else if (status === "FAIL") {
-    statusDisplay = "FAIL";
-    statusColor = "#ff4444";
-    statusMessage =
-      "Humanity in question. You did not pass the test, but you still have a chance.";
+  if (status === "perfect") {
+    statusdisplay = "perfect";
+    statuscolor = "#00ff41";
+    statusmessage =
+      "perfect score! humanity confirmed. your authenticity and understanding of human nature has been recorded.";
+  } else if (status === "pass") {
+    statusdisplay = "pass";
+    statuscolor = "#00ff88";
+    statusmessage =
+      "humanity confirmed. your authenticity and understanding of human nature has been recorded.";
+  } else if (status === "fail") {
+    statusdisplay = "fail";
+    statuscolor = "#ff4444";
+    statusmessage =
+      "humanity in question. you did not pass the test, but you still have a chance.";
   }
 
-  // Calculate correct/incorrect from roundResults if available, otherwise use correctAnswers/totalRounds
-  const actualCorrect =
-    roundResults.length > 0
-      ? roundResults.filter((r) => r.isCorrect).length
-      : correctAnswers;
-  const actualTotal =
-    roundResults.length > 0 ? roundResults.length : totalRounds;
-  const actualIncorrect = actualTotal - actualCorrect;
+  // calculate correct/incorrect from roundresults if available, otherwise use correctanswers/totalrounds
+  const actualcorrect =
+    roundresults.length > 0
+      ? roundresults.filter((r) => r.iscorrect).length
+      : correctanswers;
+  const actualtotal =
+    roundresults.length > 0 ? roundresults.length : totalrounds;
+  const actualincorrect = actualtotal - actualcorrect;
 
-  // Twitter share URL
-  const tweetText = encodeURIComponent(
-    status === "PERFECT"
-      ? `I scored PERFECT (${actualCorrect}/${actualTotal}) on the Rovers Reverse Turing Test! 🎯`
-      : status === "PASS"
-        ? `I just PASSED (${actualCorrect}/${actualTotal}) the Rovers Reverse Turing Test! ✅`
-        : status === "FAIL"
-          ? `I just FAILED (${actualCorrect}/${actualTotal}) the Rovers Reverse Turing Test. 🚫`
-          : "I took the Rovers Reverse Turing Test."
+  // twitter share url - NOW INCLUDES @roversxyz
+  const tweettext = encodeuricomponent(
+    status === "perfect"
+      ? `i scored perfect (${actualcorrect}/${actualtotal}) on the rovers reverse turing test via @roversxyz! 🎯`
+      : status === "pass"
+        ? `i just passed (${actualcorrect}/${actualtotal}) the rovers reverse turing test via @roversxyz! ✅`
+        : status === "fail"
+          ? `i just failed (${actualcorrect}/${actualtotal}) the rovers reverse turing test via @roversxyz. 🚫`
+          : "i took the rovers reverse turing test via @roversxyz."
   );
-  const twitterShareUrl = `https://twitter.com/intent/tweet?text=${tweetText}&url=${encodeURIComponent("https://therovers.xyz")}`;
+  const twittershareurl = `https://twitter.com/intent/tweet?text=${tweettext}&url=${encodeuricomponent("https://therovers.xyz")}`;
 
-  const handleShareResults = () => {
-    window.open(twitterShareUrl, "_blank", "width=550,height=420");
+  const handleshareresults = () => {
+    window.open(twittershareurl, "_blank", "width=550,height=420");
   };
 
-  // Determine which image to use based on status (all users use same pass image)
-  const getShareImage = () => {
-    if (status === "FAIL") {
+  // determine which image to use based on status (all users use same pass image)
+  const getshareimage = () => {
+    if (status === "fail") {
       return "/turing-fail.png";
-    } else if (status === "PASS" || status === "PERFECT") {
+    } else if (status === "pass" || status === "perfect") {
       return "/turing-pass.png";
     }
     return "/turing-pass.png"; // fallback
   };
 
-  const getDownloadFilename = () => {
-    if (status === "FAIL") {
+  const getdownloadfilename = () => {
+    if (status === "fail") {
       return "turing-test-fail.png";
-    } else if (status === "PASS" || status === "PERFECT") {
+    } else if (status === "pass" || status === "perfect") {
       return "turing-test-pass.png";
     }
     return "turing-test-pass.png"; // fallback
   };
 
-  const handleDownloadImage = () => {
-    // Create a link element to download the image
-    const link = document.createElement("a");
-    link.href = getShareImage();
-    link.download = getDownloadFilename();
-    document.body.appendChild(link);
+  const handledownloadimage = () => {
+    // create a link element to download the image
+    const link = document.createelement("a");
+    link.href = getshareimage();
+    link.download = getdownloadfilename();
+    document.body.appendchild(link);
     link.click();
-    document.body.removeChild(link);
+    document.body.removechild(link);
   };
 
   return (
-    <div className="results-container section">
+    <div classname="results-container section">
       <h2>
-        <span style={{ color: "#00ff88", marginRight: "8px" }}>4.</span>
-        [RESULTS] Test Complete
+        <span style={{ color: "#00ff88", marginright: "8px" }}>4.</span>
+        [results] test complete
       </h2>
 
       <div
         style={{
-          background: `rgba(${status === "PERFECT" ? "0, 255, 65" : status === "PASS" ? "0, 255, 136" : status === "FAIL" ? "255, 68, 68" : "136, 136, 136"}, 0.1)`,
-          border: `2px solid ${statusColor}`,
+          background: `rgba(${status === "perfect" ? "0, 255, 65" : status === "pass" ? "0, 255, 136" : status === "fail" ? "255, 68, 68" : "136, 136, 136"}, 0.1)`,
+          border: `2px solid ${statuscolor}`,
           padding: "24px",
-          marginBottom: "24px",
-          borderRadius: "4px",
-          textAlign: "center",
+          marginbottom: "24px",
+          borderradius: "4px",
+          textalign: "center",
         }}
       >
         <div
           style={{
-            color: statusColor,
-            fontSize: "2rem",
-            fontWeight: "bold",
-            marginBottom: "12px",
-            textTransform: "uppercase",
-            letterSpacing: "2px",
+            color: statuscolor,
+            fontsize: "2rem",
+            fontweight: "bold",
+            marginbottom: "12px",
+            texttransform: "uppercase",
+            letterspacing: "2px",
           }}
         >
-          [{statusDisplay}]
+          [{statusdisplay}]
         </div>
         <p
           style={{
             margin: 0,
             color: "#ccc",
-            fontSize: "0.95rem",
-            lineHeight: "1.6",
+            fontsize: "0.95rem",
+            lineheight: "1.6",
           }}
         >
-          {statusMessage}
+          {statusmessage}
         </p>
       </div>
 
-      {roundResults && roundResults.length > 0 && (
-        <div style={{ marginBottom: "24px" }}>
-          {roundResults.map((round, index) => (
+      {roundresults && roundresults.length > 0 && (
+        <div style={{ marginbottom: "24px" }}>
+          {roundresults.map((round, index) => (
             <div
               key={index}
               style={{
-                background: round.isCorrect
+                background: round.iscorrect
                   ? "rgba(0, 255, 65, 0.1)"
                   : "rgba(255, 68, 68, 0.1)",
-                border: `1px solid ${round.isCorrect ? "#00ff41" : "#ff4444"}`,
+                border: `1px solid ${round.iscorrect ? "#00ff41" : "#ff4444"}`,
                 padding: "12px",
-                marginBottom: "12px",
-                borderRadius: "4px",
+                marginbottom: "12px",
+                borderradius: "4px",
               }}
             >
               <div
                 style={{
-                  color: round.isCorrect ? "#00ff41" : "#ff4444",
-                  fontSize: "0.9rem",
-                  fontWeight: "bold",
-                  marginBottom: "8px",
+                  color: round.iscorrect ? "#00ff41" : "#ff4444",
+                  fontsize: "0.9rem",
+                  fontweight: "bold",
+                  marginbottom: "8px",
                 }}
               >
-                Round {round.roundNumber}:{" "}
-                {round.isCorrect ? "CORRECT" : "INCORRECT"}
+                round {round.roundnumber}:{" "}
+                {round.iscorrect ? "correct" : "incorrect"}
               </div>
               <div
                 style={{
                   color: "#ccc",
-                  fontSize: "0.85rem",
-                  lineHeight: "1.5",
-                  fontStyle: "italic",
-                  marginTop: "4px",
+                  fontsize: "0.85rem",
+                  lineheight: "1.5",
+                  fontstyle: "italic",
+                  margintop: "4px",
                 }}
               >
-                "{round.selectedAnswer || "Answer not available"}"
+                "{round.selectedanswer || "answer not available"}"
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {actualTotal > 0 && (
+      {actualtotal > 0 && (
         <div
           style={{
             background: "transparent",
             padding: "20px 0",
-            marginBottom: "24px",
-            borderTop: "1px solid #333",
-            borderBottom: "1px solid #333",
+            marginbottom: "24px",
+            bordertop: "1px solid #333",
+            borderbottom: "1px solid #333",
           }}
         >
           <div
             style={{
               display: "flex",
-              justifyContent: "space-around",
-              alignItems: "center",
-              flexWrap: "wrap",
+              justifycontent: "space-around",
+              alignitems: "center",
+              flexwrap: "wrap",
               gap: "20px",
             }}
           >
-            <div style={{ textAlign: "center" }}>
+            <div style={{ textalign: "center" }}>
               <div
                 style={{
                   color: "#00ff88",
-                  fontSize: "2rem",
-                  fontWeight: "bold",
-                  marginBottom: "8px",
+                  fontsize: "2rem",
+                  fontweight: "bold",
+                  marginbottom: "8px",
                 }}
               >
-                {actualCorrect}
+                {actualcorrect}
               </div>
               <div
                 style={{
                   color: "#888",
-                  fontSize: "0.85rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
+                  fontsize: "0.85rem",
+                  texttransform: "uppercase",
+                  letterspacing: "1px",
                 }}
               >
-                Correct
+                correct
               </div>
             </div>
-            <div style={{ textAlign: "center" }}>
+            <div style={{ textalign: "center" }}>
               <div
                 style={{
                   color: "#ff4444",
-                  fontSize: "2rem",
-                  fontWeight: "bold",
-                  marginBottom: "8px",
+                  fontsize: "2rem",
+                  fontweight: "bold",
+                  marginbottom: "8px",
                 }}
               >
-                {actualIncorrect}
+                {actualincorrect}
               </div>
               <div
                 style={{
                   color: "#888",
-                  fontSize: "0.85rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
+                  fontsize: "0.85rem",
+                  texttransform: "uppercase",
+                  letterspacing: "1px",
                 }}
               >
-                Incorrect
+                incorrect
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {(status === "PASS" || status === "PERFECT") && (
+      {(status === "pass" || status === "perfect") && (
         <div
           style={{
-            marginBottom: "24px",
-            textAlign: "center",
+            marginbottom: "24px",
+            textalign: "center",
             padding: "20px",
             background: "rgba(0, 255, 136, 0.05)",
             border: "1px solid rgba(0, 255, 136, 0.3)",
-            borderRadius: "4px",
+            borderradius: "4px",
           }}
         >
           <h3
-            style={{ color: "#00ff88", marginBottom: "16px", fontSize: "1rem" }}
+            style={{ color: "#00ff88", marginbottom: "16px", fontsize: "1rem" }}
           >
-            [SHARE YOUR SUCCESS]
+            [share your success]
           </h3>
-          <div style={{ marginBottom: "16px" }}>
+          <div style={{ marginbottom: "16px" }}>
             <img
-              src={getShareImage()}
-              alt="I PASSED THE ROVERS TURING TEST!"
+              src={getshareimage()}
+              alt="i passed the rovers turing test!"
               style={{
-                maxWidth: "100%",
+                maxwidth: "100%",
                 height: "auto",
-                borderRadius: "4px",
+                borderradius: "4px",
                 border: "1px solid rgba(0, 255, 136, 0.3)",
-                boxShadow: "0 0 20px rgba(0, 255, 136, 0.2)",
+                boxshadow: "0 0 20px rgba(0, 255, 136, 0.2)",
               }}
             />
           </div>
@@ -280,56 +280,56 @@ function Results({ walletAddress, results, onBackToStart, onRetakeTest }) {
             style={{
               display: "flex",
               gap: "12px",
-              justifyContent: "center",
-              flexWrap: "wrap",
-              flexDirection: "column",
+              justifycontent: "center",
+              flexwrap: "wrap",
+              flexdirection: "column",
             }}
-            className="share-buttons-container"
+            classname="share-buttons-container"
           >
             <button
-              onClick={handleDownloadImage}
+              onclick={handledownloadimage}
               style={{
-                marginTop: "0",
+                margintop: "0",
                 background: "transparent",
                 border: "1px solid #00ff88",
                 color: "#00ff88",
                 width: "100%",
               }}
             >
-              Download Image
+              download image
             </button>
             <button
-              onClick={handleShareResults}
+              onclick={handleshareresults}
               style={{
-                marginTop: "0",
+                margintop: "0",
                 background: "transparent",
                 border: "1px solid #00ff88",
                 color: "#00ff88",
                 width: "100%",
               }}
             >
-              Share on X
+              share on x
             </button>
           </div>
           <p
             style={{
-              marginTop: "24px",
-              marginBottom: "0",
+              margintop: "24px",
+              marginbottom: "0",
               color: "#888",
-              fontSize: "0.85rem",
-              lineHeight: "1.6",
-              textAlign: "center",
+              fontsize: "0.85rem",
+              lineheight: "1.6",
+              textalign: "center",
             }}
           >
-            Thank you for taking the Rovers Reverse Turing Test. Your wallet has
-            been submitted for Allowlist approval. Please keep an eye on{" "}
+            thank you for taking the rovers reverse turing test. your wallet has
+            been submitted for allowlist approval. please keep an eye on{" "}
             <a
               href="https://x.com/roversxyz"
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: "#00ff88" }}
             >
-              X
+              x
             </a>{" "}
             or{" "}
             <a
@@ -338,39 +338,39 @@ function Results({ walletAddress, results, onBackToStart, onRetakeTest }) {
               rel="noopener noreferrer"
               style={{ color: "#00ff88" }}
             >
-              Discord
+              discord
             </a>{" "}
             for announcements.
           </p>
         </div>
       )}
 
-      {status === "FAIL" && (
+      {status === "fail" && (
         <div
           style={{
-            marginBottom: "24px",
-            textAlign: "center",
+            marginbottom: "24px",
+            textalign: "center",
             padding: "20px",
             background: "rgba(255, 68, 68, 0.05)",
             border: "1px solid rgba(255, 68, 68, 0.3)",
-            borderRadius: "4px",
+            borderradius: "4px",
           }}
         >
           <h3
-            style={{ color: "#ff4444", marginBottom: "16px", fontSize: "1rem" }}
+            style={{ color: "#ff4444", marginbottom: "16px", fontsize: "1rem" }}
           >
-            [SHARE YOUR RESULTS]
+            [share your results]
           </h3>
-          <div style={{ marginBottom: "16px" }}>
+          <div style={{ marginbottom: "16px" }}>
             <img
               src="/turing-fail.png"
-              alt="ROVERS REVERSE TURING TEST RESULTS"
+              alt="rovers reverse turing test results"
               style={{
-                maxWidth: "100%",
+                maxwidth: "100%",
                 height: "auto",
-                borderRadius: "4px",
+                borderradius: "4px",
                 border: "1px solid rgba(255, 68, 68, 0.3)",
-                boxShadow: "0 0 20px rgba(255, 68, 68, 0.2)",
+                boxshadow: "0 0 20px rgba(255, 68, 68, 0.2)",
               }}
             />
           </div>
@@ -378,65 +378,65 @@ function Results({ walletAddress, results, onBackToStart, onRetakeTest }) {
             style={{
               display: "flex",
               gap: "12px",
-              justifyContent: "center",
-              flexWrap: "wrap",
-              flexDirection: "column",
+              justifycontent: "center",
+              flexwrap: "wrap",
+              flexdirection: "column",
             }}
-            className="share-buttons-container"
+            classname="share-buttons-container"
           >
             <button
-              onClick={() => {
-                const link = document.createElement("a");
+              onclick={() => {
+                const link = document.createelement("a");
                 link.href = "/turing-fail.png";
                 link.download = "turing-test-fail.png";
-                document.body.appendChild(link);
+                document.body.appendchild(link);
                 link.click();
-                document.body.removeChild(link);
+                document.body.removechild(link);
               }}
-              className="fail-button"
+              classname="fail-button"
               style={{
-                marginTop: "0",
+                margintop: "0",
                 background: "transparent",
                 border: "1px solid #ff4444",
                 color: "#ff4444",
                 width: "100%",
               }}
             >
-              Download Image
+              download image
             </button>
             <button
-              onClick={handleShareResults}
-              className="fail-button"
+              onclick={handleshareresults}
+              classname="fail-button"
               style={{
-                marginTop: "0",
+                margintop: "0",
                 background: "transparent",
                 border: "1px solid #ff4444",
                 color: "#ff4444",
                 width: "100%",
               }}
             >
-              Share on X
+              share on x
             </button>
           </div>
           <p
             style={{
-              marginTop: "24px",
-              marginBottom: "0",
+              margintop: "24px",
+              marginbottom: "0",
               color: "#888",
-              fontSize: "0.85rem",
-              lineHeight: "1.6",
-              textAlign: "center",
+              fontsize: "0.85rem",
+              lineheight: "1.6",
+              textalign: "center",
             }}
           >
-            Thank you for taking the Rovers Reverse Turing Test. Your wallet has
-            been submitted for Allowlist approval. Please keep an eye on{" "}
+            thank you for taking the rovers reverse turing test. your wallet has
+            been submitted for allowlist approval. please keep an eye on{" "}
             <a
               href="https://x.com/roversxyz"
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: "#ff4444" }}
             >
-              X
+              x
             </a>{" "}
             or{" "}
             <a
@@ -445,7 +445,7 @@ function Results({ walletAddress, results, onBackToStart, onRetakeTest }) {
               rel="noopener noreferrer"
               style={{ color: "#ff4444" }}
             >
-              Discord
+              discord
             </a>{" "}
             for announcements.
           </p>
@@ -455,4 +455,4 @@ function Results({ walletAddress, results, onBackToStart, onRetakeTest }) {
   );
 }
 
-export default Results;
+export default results;
