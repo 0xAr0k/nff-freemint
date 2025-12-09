@@ -26,6 +26,21 @@ function AnswerPrompt({ walletAddress, onSubmit }) {
     }
   };
 
+  // Auto-capitalize first letter of the answer
+  const capitalizeFirstLetter = (text) => {
+    if (!text) return text;
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  };
+
+  const handleAnswerChange = (e) => {
+    const value = e.target.value;
+    if (value.length <= MAX_LENGTH) {
+      // Capitalize first letter automatically
+      const capitalizedValue = capitalizeFirstLetter(value);
+      setAnswer(capitalizedValue);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -117,11 +132,7 @@ function AnswerPrompt({ walletAddress, onSubmit }) {
           <textarea
             id="answer"
             value={answer}
-            onChange={(e) => {
-              if (e.target.value.length <= MAX_LENGTH) {
-                setAnswer(e.target.value);
-              }
-            }}
+            onChange={handleAnswerChange}
             placeholder="Write your answer here..."
             maxLength={MAX_LENGTH}
             autoFocus

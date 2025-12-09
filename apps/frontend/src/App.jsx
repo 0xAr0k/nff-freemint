@@ -1,19 +1,25 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import WalletEntry from "./components/WalletEntry";
 import Explainer from "./components/Explainer";
-import RoverExplainer from "./components/RoverExplainer";
 import AnswerPrompt from "./components/AnswerPrompt";
 import TuringGame from "./components/TuringGame";
 import Results from "./components/Results";
-import RoverResults from "./components/RoverResults";
 import Leaderboard from "./components/Leaderboard";
 import { getApiUrl } from "./config";
+
+// Define step constants
+const STEPS = {
+  WALLET: "wallet",
+  EXPLAINER: "explainer",
+  ANSWER: "answer",
+  GAME: "game",
+  RESULTS: "results",
+};
 
 function App() {
   const [currentWallet, setCurrentWallet] = useState(null);
   const [walletStatus, setWalletStatus] = useState(null);
-  const [step, setStep] = useState("wallet"); // wallet, explainer, answer, game, results
-  const [rounds, setRounds] = useState(null);
+  const [step, setStep] = useState(STEPS.WALLET);
   const [gameResults, setGameResults] = useState(null);
 
   const handleWalletSubmit = async (walletData) => {
@@ -21,9 +27,7 @@ function App() {
       // Register wallet with X handle and checkboxes
       const response = await fetch(getApiUrl("/form/submit"), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(walletData),
       });
 
@@ -36,64 +40,15 @@ function App() {
       const data = await response.json();
       setCurrentWallet(walletData.walletAddress);
 
-      // Check wallet status (this will also confirm Rover holder status)
-      const encodedAddress = encodeURIComponent(walletData.walletAddress);
-      const statusResponse = await fetch(getApiUrl(`game/${encodedAddress}`));
-      const statusData = await statusResponse.json();
-      setWalletStatus(statusData);
-
-      // Use Rover holder status from wallet check (more reliable)
-      const isRoverHolder =
-        statusData.isRoverHolder || data.isRoverHolder || false;
-
-      if (statusData.hasPlayed) {
-        // Route to appropriate results page
-        if (isRoverHolder) {
-          setStep("rover-results");
-        } else {
-          setStep("results");
-        }
-        setGameResults({
-          correctAnswers: statusData.correctAnswers || 0,
-          totalRounds: statusData.totalRounds || 0,
-          status: statusData.status,
-          testStatus: statusData.testStatus,
-          roundResults: statusData.roundResults || [], // Include round results
-          isRoverHolder: isRoverHolder, // Include Rover holder status for image selection
-        });
-      } else {
-        // Route to appropriate explainer
-        if (isRoverHolder) {
-          setStep("rover-explainer");
-        } else {
-          setStep("explainer");
-        }
-      }
+      // Check wallet status
+      await checkWalletStatus(walletData.walletAddress);
     } catch (error) {
       console.error("Error registering wallet:", error);
       alert("Error registering wallet. Please try again.");
     }
   };
 
-  const handleLeaderboardClick = (walletAddress) => {
-    // When clicking on a leaderboard entry, check that wallet
-    handleWalletCheck(walletAddress);
-  };
-
-  const handleExplainerContinue = () => {
-    setStep("answer");
-  };
-
-  const handleRoverExplainerContinue = () => {
-    // Rover holders go through answer submission like everyone else
-    setStep("answer");
-  };
-
-  const handleAnswerSubmit = () => {
-    setStep("game");
-  };
-
-  const handleWalletCheck = async (walletAddress) => {
+  const checkWalletStatus = async (walletAddress) => {
     try {
       const encodedAddress = encodeURIComponent(walletAddress);
       const response = await fetch(getApiUrl(`game/${encodedAddress}`));
@@ -108,35 +63,37 @@ function App() {
       setCurrentWallet(walletAddress);
       setWalletStatus(data);
 
-      const isRoverHolder = data.isRoverHolder || false;
-
       if (data.hasPlayed) {
-        // Route to appropriate results page
-        if (isRoverHolder) {
-          setStep("rover-results");
-        } else {
-          setStep("results");
-        }
+        // User has already played - show results
         setGameResults({
           correctAnswers: data.correctAnswers || 0,
           totalRounds: data.totalRounds || 0,
           status: data.status,
           testStatus: data.testStatus,
-          roundResults: data.roundResults || [], // Include round results
-          isRoverHolder: isRoverHolder, // Include Rover holder status for image selection
+          roundResults: data.roundResults || [],
+          isRoverHolder: data.isRoverHolder || false,
         });
+        setStep(STEPS.RESULTS);
       } else {
-        // Route to appropriate explainer
-        if (isRoverHolder) {
-          setStep("rover-explainer");
-        } else {
-          setStep("explainer");
-        }
+        // New user - show explainer
+        setStep(STEPS.EXPLAINER);
       }
     } catch (error) {
       console.error("Error checking wallet:", error);
       alert("Error checking wallet. Please try again.");
     }
+  };
+
+  const handleLeaderboardClick = (walletAddress) => {
+    checkWalletStatus(walletAddress);
+  };
+
+  const handleExplainerContinue = () => {
+    setStep(STEPS.ANSWER);
+  };
+
+  const handleAnswerSubmit = () => {
+    setStep(STEPS.GAME);
   };
 
   const handleGameComplete = (results) => {
@@ -148,28 +105,28 @@ function App() {
       roundResults: results.roundResults,
       isRoverHolder: results.isRoverHolder || false,
     });
-    // Route to appropriate results page based on Rover holder status
-    if (results.isRoverHolder) {
-      setStep("rover-results");
-    } else {
-      setStep("results");
-    }
+    setStep(STEPS.RESULTS);
   };
 
   const handleBackToStart = () => {
     setCurrentWallet(null);
     setWalletStatus(null);
-    setStep("wallet");
-    setRounds(null);
+    setStep(STEPS.WALLET);
     setGameResults(null);
   };
 
   const handleRetakeTest = () => {
-    // Reset game state but keep wallet
-    setRounds(null);
     setGameResults(null);
-    setStep("game"); // Go directly to game, skipping answer submission
+    setStep(STEPS.GAME);
   };
+
+  const isRoverHolder =
+    walletStatus?.isRoverHolder || gameResults?.isRoverHolder || false;
+  const showLeaderboard = [
+    STEPS.WALLET,
+    STEPS.EXPLAINER,
+    STEPS.RESULTS,
+  ].includes(step);
 
   return (
     <div className="container">
@@ -178,31 +135,30 @@ function App() {
         [SYSTEM] Reverse Turing protocol active. Prove you are human.
       </p>
 
-      {step === "wallet" && <WalletEntry onSubmit={handleWalletSubmit} />}
+      {step === STEPS.WALLET && <WalletEntry onSubmit={handleWalletSubmit} />}
 
-      {step === "explainer" && (
-        <Explainer onContinue={handleExplainerContinue} isRoverHolder={false} />
+      {step === STEPS.EXPLAINER && (
+        <Explainer
+          onContinue={handleExplainerContinue}
+          isRoverHolder={isRoverHolder}
+        />
       )}
 
-      {step === "rover-explainer" && (
-        <RoverExplainer onContinue={handleRoverExplainerContinue} />
-      )}
-
-      {step === "answer" && (
+      {step === STEPS.ANSWER && (
         <AnswerPrompt
           walletAddress={currentWallet}
           onSubmit={handleAnswerSubmit}
         />
       )}
 
-      {step === "game" && (
+      {step === STEPS.GAME && (
         <TuringGame
           walletAddress={currentWallet}
           onComplete={handleGameComplete}
         />
       )}
 
-      {step === "results" && (
+      {step === STEPS.RESULTS && (
         <Results
           walletAddress={currentWallet}
           results={gameResults}
@@ -211,19 +167,7 @@ function App() {
         />
       )}
 
-      {step === "rover-results" && (
-        <RoverResults
-          walletAddress={currentWallet}
-          results={gameResults}
-          onBackToStart={handleBackToStart}
-          onRetakeTest={handleRetakeTest}
-        />
-      )}
-
-      {(step === "results" ||
-        step === "rover-results" ||
-        step === "wallet" ||
-        step === "explainer") && (
+      {showLeaderboard && (
         <div className="section">
           <Leaderboard onWalletClick={handleLeaderboardClick} />
         </div>
