@@ -8,6 +8,8 @@ export const envSchema = z.object({
   API_KEY: z.string().min(1),
   OPENAI_API_KEY: z.string().min(1),
   FRONTEND_URL: z.string().optional(),
+  RPC_URL: z.string().optional(),
+  CONTRACT_ADDRESS: z.string().optional(),
 });
 export const env = envSchema.parse(Bun.env);
 export type EnvBindings = z.infer<typeof envSchema>;

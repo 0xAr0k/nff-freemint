@@ -11,15 +11,25 @@ import giftRoute from "./routes/gift";
 import { ok, notFound, badRequest, unexpectedError } from "./utils/response";
 import { HTTPResponseError } from "hono/types";
 import { logger } from "./logger";
+import { createPublicClient, http, PublicClient } from "viem";
+import { mainnet } from "viem/chains";
+import nftRoute from "./routes/nfts";
 
 declare module "hono" {
   interface ContextVariableMap {
     env: EnvBindings;
     db: Db;
+    client: PublicClient;
   }
 }
 
 const db = await connectDB();
+
+const publicClient = createPublicClient({
+  chain: mainnet,
+  transport: http(env.RPC_URL || "https://eth.llamarpc.com"),
+});
+
 const app = new Hono();
 
 const allowedOrigins = [
@@ -83,6 +93,7 @@ app
   .use("*", async (c, next) => {
     c.set("env", env);
     c.set("db", db);
+    c.set("client", publicClient);
     await next();
   })
   .get("/", (c) => ok(c, { message: "ok" }))
@@ -90,6 +101,7 @@ app
   .route("/form", formRoute)
   .route("/game", gameRoute)
   .route("/gift", giftRoute)
+  .route("/nfts", nftRoute)
   .get("*", (c) =>
     notFound(c, { message: `Path ${c.req.method} ${c.req.path} not found` })
   )
