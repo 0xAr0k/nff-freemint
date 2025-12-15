@@ -29,7 +29,7 @@ app.get(
         args: [address as Address],
       });
 
-      if (balance === 0n) {
+      if (balance === 0n || balance === null) {
         return ok(c, {
           address,
           balance: "0",
